@@ -1,0 +1,135 @@
+use std::ops;
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Vec3 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl Vec3 {
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Vec3 { x, y, z }
+    }
+
+    pub fn dot(&self, rhs: &Vec3) -> f64 {
+        self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+    }
+
+    pub fn length(&self) -> f64 {
+        (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
+    }
+
+    pub fn normalized(&self) -> Self {
+        let len = self.length();
+        return Vec3::new(self.x / len, self.y / len, self.z / len);
+    }
+
+    pub fn to_point(&self) -> Point3 {
+        return Point3 {
+            x: self.x,
+            y: self.y,
+            z: self.z,
+        };
+    }
+}
+
+impl ops::Add<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn add(self, rhs: Vec3) -> Vec3 {
+        return Vec3 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        };
+    }
+}
+
+impl ops::Sub<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn sub(self, rhs: Vec3) -> Vec3 {
+        return Vec3 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        };
+    }
+}
+
+impl ops::Mul<f64> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, rhs: f64) -> Vec3 {
+        return Vec3 {
+            x: self.x * rhs,
+            y: self.y * rhs,
+            z: self.z * rhs,
+        };
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Point3 {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Ray {
+    pub origin: Vec3,
+    pub direction: Vec3,
+}
+
+impl Ray {
+    pub fn new(origin: Vec3, direction: Vec3) -> Self {
+        Self {
+            origin: origin,
+            direction: direction.normalized(),
+        }
+    }
+
+    pub fn at(&self, t: f64) -> Vec3 {
+        self.origin + self.direction * t
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::Vec3;
+
+    #[test]
+    fn test_add() {
+        let u = Vec3::new(1.0, 2.0, 3.0);
+        let v = Vec3::new(4.0, 5.0, 6.0);
+        let expected = Vec3::new(5.0, 7.0, 9.0);
+        assert_eq!(u + v, expected);
+    }
+
+    #[test]
+    fn test_sub() {
+        let u = Vec3::new(4.0, 5.0, 6.0);
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let expected = Vec3::new(3.0, 3.0, 3.0);
+        assert_eq!(u - v, expected);
+    }
+
+    #[test]
+    fn test_scale() {
+        let u = Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(u * 2.0, Vec3::new(8.0, 10.0, 12.0));
+    }
+
+    #[test]
+    fn test_dot() {
+        let u = Vec3::new(1.0, 2.0, 3.0);
+        let v = Vec3::new(1.0, 1.0, 1.0);
+        let expected = 6.0;
+        assert_eq!(u.dot(&v), expected);
+    }
+}
