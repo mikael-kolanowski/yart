@@ -1,5 +1,7 @@
 mod math;
 
+use crate::math::*;
+
 struct Color {
     r: f64,
     g: f64,
@@ -40,6 +42,7 @@ fn main() {
     println!("255"); // Max color component
 
     for j in 0..height {
+        eprintln!("Scanline {} / {}", j + 1, height);
         for i in 0..width {
             let color = Color {
                 r: (i as f64) / (width - 1) as f64,
@@ -49,4 +52,5 @@ fn main() {
             color.write();
         }
     }
+
 }
