@@ -1,8 +1,10 @@
 mod math;
+mod progressbar;
 
 use std::time::Instant;
 
 use crate::math::*;
+use crate::progressbar::ProgressBar;
 
 #[derive(Clone, Copy)]
 struct Color {
@@ -19,8 +21,8 @@ impl Color {
     };
 
     fn lerp(start: Color, end: Color, t: f64) -> Self {
-        let va = math::Vec3::new(start.r, start.g, start.b);
-        let vb = math::Vec3::new(end.r, end.g, end.b);
+        let va = Vec3::new(start.r, start.g, start.b);
+        let vb = Vec3::new(end.r, end.g, end.b);
         let lerped = Vec3::lerp(va, vb, t);
         Color {
             r: lerped.x,
@@ -39,8 +41,8 @@ impl Color {
 }
 
 fn ray_color(ray: &Ray) -> Color {
-    let sphere = math::shapes::Sphere {
-        center: math::Point3::new(0.0, 0.0, -1.0),
+    let sphere = shapes::Sphere {
+        center: Point3::new(0.0, 0.0, -1.0),
         radius: 0.5,
     };
 
@@ -79,20 +81,18 @@ fn main() {
     let focal_length = 1.0;
     let viewport_height = 2.0;
     let viewport_width = viewport_height * (image_width as f64) / (image_height as f64);
-    let camera_center = math::Point3::ZERO;
+    let camera_center = Point3::ZERO;
 
     // Calculate the vectors across the horizontal and down the vertical viewport edges
-    let viewport_u = math::Vec3::new(viewport_width, 0.0, 0.0);
-    let viewport_v = math::Vec3::new(0.0, viewport_height, 0.0);
+    let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
+    let viewport_v = Vec3::new(0.0, viewport_height, 0.0);
 
     // Calculate the horizontal and vertical delta vectors from pixel to pixel
     let pixel_delta_u = viewport_u / image_width as f64;
     let pixel_delta_v = viewport_v / image_height as f64;
 
-    let viewport_upper_left = camera_center
-        - math::Vec3::new(0.0, 0.0, focal_length)
-        - viewport_u / 2.0
-        - viewport_v / 2.0;
+    let viewport_upper_left =
+        camera_center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
 
     let pixel_upper_left = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
@@ -102,18 +102,24 @@ fn main() {
     println!("255"); // Max color component
 
     let rendering_started = Instant::now();
+    let mut progress_bar = ProgressBar::new(image_height as usize);
     for j in 0..image_height {
-        eprintln!("Scanline {} / {}", j + 1, image_height);
+        // eprintln!("Scanline {} / {}", j + 1, image_height);
         for i in 0..image_width {
             let pixel_center =
                 pixel_upper_left + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
             let ray_direction = pixel_center - camera_center;
-            let ray = math::Ray::new(camera_center, ray_direction);
+            let ray = Ray::new(camera_center, ray_direction);
 
             let pixel_color = ray_color(&ray);
             pixel_color.write();
         }
+        progress_bar.increment();
     }
     let rendering_finished = Instant::now();
-    eprintln!("Image rendered in {} ms", (rendering_finished - rendering_started).as_millis());
+    progress_bar.finish();
+    eprintln!(
+        "Image rendered in {} ms",
+        (rendering_finished - rendering_started).as_millis()
+    );
 }
