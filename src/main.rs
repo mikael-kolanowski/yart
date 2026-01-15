@@ -1,5 +1,7 @@
 mod math;
 
+use std::time::Instant;
+
 use crate::math::*;
 
 #[derive(Clone, Copy)]
@@ -37,7 +39,20 @@ impl Color {
 }
 
 fn ray_color(ray: &Ray) -> Color {
-    let t = 0.5 * ray.direction.normalized().y + 1.0;
+    let sphere = math::shapes::Sphere {
+        center: math::Point3::new(0.0, 0.0, -1.0),
+        radius: 0.5,
+    };
+
+    if sphere.check_intersection(ray) {
+        return Color {
+            r: 1.0,
+            g: 0.0,
+            b: 0.0,
+        };
+    }
+
+    let t = 0.5 * (ray.direction.normalized().y + 1.0);
     Color::lerp(
         Color::WHITE,
         Color {
@@ -86,6 +101,7 @@ fn main() {
     println!("{} {}", image_width, image_height);
     println!("255"); // Max color component
 
+    let rendering_started = Instant::now();
     for j in 0..image_height {
         eprintln!("Scanline {} / {}", j + 1, image_height);
         for i in 0..image_width {
@@ -98,4 +114,6 @@ fn main() {
             pixel_color.write();
         }
     }
+    let rendering_finished = Instant::now();
+    eprintln!("Image rendered in {} ms", (rendering_finished - rendering_started).as_millis());
 }
