@@ -18,6 +18,10 @@ impl Vec3 {
         Vec3 { x, y, z }
     }
 
+    pub fn lerp(start: Vec3, end: Vec3, t: f64) -> Vec3 {
+        (1.0 - t) * start + t * end
+    }
+
     pub fn dot(&self, rhs: &Vec3) -> f64 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
@@ -54,26 +58,48 @@ impl ops::Add<Vec3> for Vec3 {
 impl ops::Sub<Vec3> for Vec3 {
     type Output = Vec3;
     fn sub(self, rhs: Vec3) -> Vec3 {
-        return Vec3 {
+        Vec3 {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
             z: self.z - rhs.z,
-        };
+        }
     }
 }
 
 impl ops::Mul<f64> for Vec3 {
     type Output = Vec3;
     fn mul(self, rhs: f64) -> Vec3 {
-        return Vec3 {
+        Vec3 {
             x: self.x * rhs,
             y: self.y * rhs,
             z: self.z * rhs,
-        };
+        }
     }
 }
 
-type Point3 = Vec3;
+impl ops::Mul<Vec3> for f64 {
+    type Output = Vec3;
+    fn mul(self, rhs: Vec3) -> Vec3 {
+        Vec3 {
+            x: rhs.x * self,
+            y: rhs.y * self,
+            z: rhs.z * self,
+        }
+    }
+}
+
+impl ops::Div<f64> for Vec3 {
+    type Output = Vec3;
+    fn div(self, rhs: f64) -> Self::Output {
+        Vec3 {
+            x: self.x / rhs,
+            y: self.y / rhs,
+            z: self.z / rhs,
+        }
+    }
+}
+
+pub type Point3 = Vec3;
 
 #[cfg(test)]
 pub mod tests {

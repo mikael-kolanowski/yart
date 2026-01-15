@@ -1,9 +1,10 @@
-use super::vector::{Vec3, Ray};
+use super::ray::Ray;
+use super::vector::Vec3;
 
 pub struct HitInfo {
     pub location: Vec3,
     pub normal: Vec3,
-    pub t: f64
+    pub t: f64,
 }
 
 pub trait Hittable {

@@ -1,7 +1,7 @@
-pub mod vector;
-pub mod shapes;
 pub mod ray;
+pub mod shapes;
+pub mod vector;
 
-pub use vector::*;
-pub use shapes::*;
 pub use ray::*;
+pub use shapes::*;
+pub use vector::*;
