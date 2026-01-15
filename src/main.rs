@@ -1,75 +1,32 @@
+mod color;
 mod math;
 mod progressbar;
 
 use std::time::Instant;
 
+use crate::color::Color;
 use crate::math::*;
 use crate::progressbar::ProgressBar;
 
-#[derive(Clone, Copy)]
-struct Color {
-    r: f64,
-    g: f64,
-    b: f64,
-}
-
-impl Color {
-    const WHITE: Self = Self {
-        r: 1.0,
-        g: 1.0,
-        b: 1.0,
-    };
-
-    fn lerp(start: Color, end: Color, t: f64) -> Self {
-        let va = Vec3::new(start.r, start.g, start.b);
-        let vb = Vec3::new(end.r, end.g, end.b);
-        let lerped = Vec3::lerp(va, vb, t);
-        Color {
-            r: lerped.x,
-            g: lerped.y,
-            b: lerped.z,
-        }
-    }
-
-    fn write(&self) {
-        let ir = (255.999 * self.r) as i32;
-        let ig = (255.999 * self.g) as i32;
-        let ib = (255.999 * self.b) as i32;
-
-        println!("{} {} {}", ir, ig, ib);
-    }
-}
-
 fn ray_color(ray: &Ray) -> Color {
-    let sphere = shapes::Sphere {
+    let sphere = geometry::Sphere {
         center: Point3::new(0.0, 0.0, -1.0),
         radius: 0.5,
     };
 
-    if sphere.check_intersection(ray) {
-        return Color {
-            r: 1.0,
-            g: 0.0,
-            b: 0.0,
-        };
+    if let Some(hit_info) = sphere.check_intersection(ray) {
+        let normal = hit_info.normal.normalized();
+        return Color::from(0.5 * (normal + Vec3::ONES));
     }
 
     let t = 0.5 * (ray.direction.normalized().y + 1.0);
-    Color::lerp(
-        Color::WHITE,
-        Color {
-            r: 0.5,
-            g: 0.7,
-            b: 1.0,
-        },
-        t,
-    )
+    Color::lerp(Color::WHITE, Color::new(0.5, 0.7, 1.0), t)
 }
 
 fn main() {
     // Image
     let aspect_ratio = 16.0 / 9.0;
-    let image_width = 400;
+    let image_width = 800;
     let image_height = {
         let w = (image_width as f64 / aspect_ratio) as i32;
         if w < 1 { 1 } else { w }
@@ -85,7 +42,7 @@ fn main() {
 
     // Calculate the vectors across the horizontal and down the vertical viewport edges
     let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-    let viewport_v = Vec3::new(0.0, viewport_height, 0.0);
+    let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
 
     // Calculate the horizontal and vertical delta vectors from pixel to pixel
     let pixel_delta_u = viewport_u / image_width as f64;
@@ -101,10 +58,9 @@ fn main() {
     println!("{} {}", image_width, image_height);
     println!("255"); // Max color component
 
-    let rendering_started = Instant::now();
     let mut progress_bar = ProgressBar::new(image_height as usize);
+    let rendering_started = Instant::now();
     for j in 0..image_height {
-        // eprintln!("Scanline {} / {}", j + 1, image_height);
         for i in 0..image_width {
             let pixel_center =
                 pixel_upper_left + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);

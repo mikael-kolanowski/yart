@@ -1,5 +1,7 @@
 use std::ops;
 
+use super::Lerp;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Vec3 {
     pub x: f64,
@@ -8,29 +10,26 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub const ZERO: Self = Self {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    };
+    pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
+    pub const ONES: Self = Self::new(1.0, 1.0, 1.0);
 
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Vec3 { x, y, z }
     }
 
-    pub fn lerp(start: Vec3, end: Vec3, t: f64) -> Vec3 {
-        (1.0 - t) * start + t * end
-    }
-
-    pub fn dot(&self, rhs: Vec3) -> f64 {
+    pub fn dot(self, rhs: Vec3) -> f64 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
-    pub fn length(&self) -> f64 {
+    pub fn length(self) -> f64 {
         (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
     }
 
-    pub fn normalized(&self) -> Self {
+    pub fn length_squared(self) -> f64 {
+        self.x.powi(2) + self.y.powi(2) + self.z.powi(2)
+    }
+
+    pub fn normalized(self) -> Self {
         let len = self.length();
         return Vec3::new(self.x / len, self.y / len, self.z / len);
     }
@@ -41,6 +40,12 @@ impl Vec3 {
             y: self.y,
             z: self.z,
         };
+    }
+}
+
+impl Lerp<Vec3> for Vec3 {
+    fn lerp(start: Vec3, end: Vec3, t: f64) -> Vec3 {
+        (1.0 - t) * start + t * end
     }
 }
 
@@ -132,6 +137,6 @@ pub mod tests {
         let u = Vec3::new(1.0, 2.0, 3.0);
         let v = Vec3::new(1.0, 1.0, 1.0);
         let expected = 6.0;
-        assert_eq!(u.dot(&v), expected);
+        assert_eq!(u.dot(v), expected);
     }
 }
