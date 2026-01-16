@@ -5,16 +5,43 @@ mod progressbar;
 use std::time::Instant;
 
 use crate::color::Color;
+use crate::math::interval::Interval;
 use crate::math::*;
 use crate::progressbar::ProgressBar;
 
-fn ray_color(ray: &Ray) -> Color {
-    let sphere = geometry::Sphere {
-        center: Point3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-    };
+struct World {
+    objects: Vec<Box<dyn Hittable>>,
+}
 
-    if let Some(hit_info) = sphere.check_intersection(ray) {
+impl World {
+    fn new() -> Self {
+        Self {
+            objects: Vec::new(),
+        }
+    }
+
+    fn add(&mut self, object: Box<dyn Hittable>) {
+        self.objects.push(object);
+    }
+}
+
+impl Hittable for World {
+    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+        let mut closest = ray_t.max;
+        let mut hit_anything = None;
+
+        for obj in &self.objects {
+            if let Some(hit) = obj.check_intersection(ray, Interval::new(ray_t.min, closest)) {
+                closest = hit.t;
+                hit_anything = Some(hit)
+            }
+        }
+        return hit_anything;
+    }
+}
+
+fn ray_color(ray: &Ray, world: &World) -> Color {
+    if let Some(hit_info) = world.check_intersection(ray, Interval::new(0.0, f64::INFINITY)) {
         let normal = hit_info.normal.normalized();
         return Color::from(0.5 * (normal + Vec3::ONES));
     }
@@ -26,13 +53,25 @@ fn ray_color(ray: &Ray) -> Color {
 fn main() {
     // Image
     let aspect_ratio = 16.0 / 9.0;
-    let image_width = 800;
+    let image_width = 400;
     let image_height = {
         let w = (image_width as f64 / aspect_ratio) as i32;
         if w < 1 { 1 } else { w }
     };
 
     eprintln!("Output image dimensions: {}x{}", image_width, image_height);
+
+    // World
+    let mut world = World::new();
+    world.add(Box::new(geometry::Sphere {
+        center: Point3::new(0.0, 0.0, -1.0),
+        radius: 0.5,
+    }));
+
+    world.add(Box::new(geometry::Sphere {
+        center: Point3::new(0.0, -100.5, -1.0),
+        radius: 100.0,
+    }));
 
     // Camera
     let focal_length = 1.0;
@@ -67,7 +106,7 @@ fn main() {
             let ray_direction = pixel_center - camera_center;
             let ray = Ray::new(camera_center, ray_direction);
 
-            let pixel_color = ray_color(&ray);
+            let pixel_color = ray_color(&ray, &world);
             pixel_color.write();
         }
         progress_bar.increment();
