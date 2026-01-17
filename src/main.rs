@@ -1,12 +1,15 @@
 mod color;
+mod config;
 mod math;
 mod progressbar;
 
+use std::{env, fs, process};
 use std::time::Instant;
 
 use rand::Rng;
 
 use crate::color::Color;
+use crate::config::*;
 use crate::math::interval::Interval;
 use crate::math::*;
 use crate::progressbar::ProgressBar;
@@ -54,10 +57,9 @@ fn ray_color(ray: &Ray, world: &World) -> Color {
 
 struct Camera {
     // Ratio of image width over height
-    aspect_ratio: f64,
     // Output image width in pixels
-    image_width: usize,
-    image_height: usize,
+    image_width: u32,
+    image_height: u32,
     center: Point3,
     pixel_upper_left: Point3,
     pixel_delta_u: Vec3,
@@ -65,9 +67,9 @@ struct Camera {
 }
 
 impl Camera {
-    fn new(aspect_ratio: f64, image_width: usize) -> Self {
+    fn new(aspect_ratio: f64, image_width: u32) -> Self {
         let image_height = {
-            let w = (image_width as f64 / aspect_ratio) as usize;
+            let w = (image_width as f64 / aspect_ratio) as u32;
             if w < 1 { 1 } else { w }
         };
 
@@ -92,7 +94,6 @@ impl Camera {
         let pixel_upper_left = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
         Self {
-            aspect_ratio,
             image_width,
             image_height,
             center,
@@ -167,10 +168,31 @@ impl Renderer {
     }
 }
 
+fn read_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
+    let contents = fs::read_to_string(path)?;
+    let config: Config = toml::from_str(&contents)?;
+    Ok(config)
+}
+
+fn print_usage() {
+    println!("Usage: ");
+    println!("yart <config.toml>");
+}
+
 fn main() {
-    // Image
-    let aspect_ratio = 16.0 / 9.0;
-    let image_width = 400;
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Error: no config file supplied");
+        print_usage();
+        process::exit(1);
+    }
+
+    let config_path = &args[1];
+
+    let config = read_config(config_path).unwrap_or_else(|err| {
+        eprintln!("Could not read config: {err}");
+        process::exit(1);
+    });
 
     // World
     let mut world = World::new();
@@ -186,9 +208,9 @@ fn main() {
 
     let mut rng = rand::rng();
 
-    let camera = Camera::new(aspect_ratio, image_width);
+    let camera = Camera::new(config.camera.aspect_ratio, config.camera.image_width);
 
-    let renderer = Renderer::new(100);
+    let renderer = Renderer::new(config.renderer.samples_per_pixel);
 
     renderer.render(&world, &camera, &mut rng);
 }

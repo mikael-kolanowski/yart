@@ -5,9 +5,9 @@ const ANSI_GREEN: &str = "\x1b[92m";
 const ANSI_RESET: &str = "\x1b[0m";
 
 pub struct ProgressBar {
-    total: usize,
-    current: usize,
-    width: usize,
+    total: u32,
+    current: u32,
+    width: u32,
     prefix: String,
     suffix: String,
     fill: char,
@@ -15,7 +15,7 @@ pub struct ProgressBar {
 }
 
 impl ProgressBar {
-    pub fn new(prefix: String, total: usize) -> Self {
+    pub fn new(prefix: String, total: u32) -> Self {
         Self {
             total,
             current: 0,
@@ -39,12 +39,14 @@ impl ProgressBar {
             0.0
         };
 
-        let filled_width = (self.width as f64 * percent) as usize;
+        let filled_width = (self.width as f64 * percent) as u32;
 
         let bar = format!(
             "{}{}",
-            self.fill.to_string().repeat(filled_width),
-            self.empty.to_string().repeat(self.width - filled_width)
+            self.fill.to_string().repeat(filled_width as usize),
+            self.empty
+                .to_string()
+                .repeat(self.width as usize - filled_width as usize)
         );
 
         let mut output = format!(
