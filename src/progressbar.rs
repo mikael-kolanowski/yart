@@ -15,12 +15,12 @@ pub struct ProgressBar {
 }
 
 impl ProgressBar {
-    pub fn new(total: usize) -> Self {
+    pub fn new(prefix: String, total: usize) -> Self {
         Self {
             total,
             current: 0,
             width: 50,
-            prefix: "Progress:".to_string(),
+            prefix,
             suffix: "Complete".to_string(),
             fill: '█',
             empty: '░',

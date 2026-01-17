@@ -4,6 +4,8 @@ mod progressbar;
 
 use std::time::Instant;
 
+use rand::Rng;
+
 use crate::color::Color;
 use crate::math::interval::Interval;
 use crate::math::*;
@@ -51,7 +53,9 @@ fn ray_color(ray: &Ray, world: &World) -> Color {
 }
 
 struct Camera {
+    // Ratio of image width over height
     aspect_ratio: f64,
+    // Output image width in pixels
     image_width: usize,
     image_height: usize,
     center: Point3,
@@ -98,28 +102,58 @@ impl Camera {
         }
     }
 
-    fn render(&self, world: &World) {
+    fn get_ray(&self, i: i32, j: i32, offset: Vec3) -> Ray {
+        let pixel_sample = self.pixel_upper_left
+            + ((i as f64 + offset.x) * self.pixel_delta_u)
+            + ((j as f64 + offset.y) * self.pixel_delta_v);
+
+        let ray_origin = self.center;
+        let ray_direction = pixel_sample - ray_origin;
+        Ray::new(ray_origin, ray_direction)
+    }
+}
+
+struct Renderer {
+    samples_per_pixel: u32,
+}
+
+impl Renderer {
+    fn new(samples_per_pixel: u32) -> Self {
+        Self { samples_per_pixel }
+    }
+
+    /// Returns the vector to a random point in the [-0.5, -0.5]-[0.5, 0.5] unit square
+    fn sample_square(&self, rng: &mut impl Rng) -> Vec3 {
+        let a: f64 = rng.random();
+        let b: f64 = rng.random();
+        Vec3::new(a - 0.5, b - 0.5, 0.0)
+    }
+
+    fn render(&self, world: &World, camera: &Camera, rng: &mut impl Rng) {
         eprintln!(
             "Output image dimensions: {}x{}",
-            self.image_width, self.image_height
+            camera.image_width, camera.image_height
         );
+
+        let pixel_samples_scale = 1.0 / self.samples_per_pixel as f64;
 
         // Render
         println!("P3");
-        println!("{} {}", self.image_width, self.image_height);
+        println!("{} {}", camera.image_width, camera.image_height);
         println!("255"); // Max color component
 
-        let mut progress_bar = ProgressBar::new(self.image_height);
+        // TODO: Consider rectoring out image generation
+        let mut progress_bar = ProgressBar::new("Rendering".to_string(), camera.image_height);
         let rendering_started = Instant::now();
-        for j in 0..self.image_height {
-            for i in 0..self.image_width {
-                let pixel_center = self.pixel_upper_left
-                    + (i as f64 * self.pixel_delta_u)
-                    + (j as f64 * self.pixel_delta_v);
-                let ray_direction = pixel_center - self.center;
-                let ray = Ray::new(self.center, ray_direction);
-
-                let pixel_color = ray_color(&ray, &world);
+        for j in 0..camera.image_height {
+            for i in 0..camera.image_width {
+                let mut pixel_color = Color::new(0.0, 0.0, 0.0);
+                for _ in 0..self.samples_per_pixel {
+                    let offset = self.sample_square(rng);
+                    let ray = camera.get_ray(i as i32, j as i32, offset);
+                    pixel_color = pixel_color + ray_color(&ray, world);
+                }
+                pixel_color = pixel_color * pixel_samples_scale;
                 pixel_color.write();
             }
             progress_bar.increment();
@@ -150,7 +184,11 @@ fn main() {
         radius: 100.0,
     }));
 
+    let mut rng = rand::rng();
+
     let camera = Camera::new(aspect_ratio, image_width);
 
-    camera.render(&world);
+    let renderer = Renderer::new(100);
+
+    renderer.render(&world, &camera, &mut rng);
 }
