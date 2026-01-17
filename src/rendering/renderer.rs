@@ -7,6 +7,7 @@ use std::time::Instant;
 use crate::math::{Lerp, Ray, Vec3, geometry::Hittable, interval::Interval};
 
 use super::camera::Camera;
+use super::sampler::Sampler;
 
 fn ray_color(ray: &Ray, world: &World) -> Color {
     if let Some(hit_info) = world.check_intersection(ray, Interval::new(0.0, f64::INFINITY)) {
@@ -27,14 +28,7 @@ impl Renderer {
         Self { samples_per_pixel }
     }
 
-    /// Returns the vector to a random point in the [-0.5, -0.5]-[0.5, 0.5] unit square
-    fn sample_square(&self, rng: &mut impl Rng) -> Vec3 {
-        let a: f64 = rng.random();
-        let b: f64 = rng.random();
-        Vec3::new(a - 0.5, b - 0.5, 0.0)
-    }
-
-    pub fn render(&self, world: &World, camera: &Camera, rng: &mut impl Rng) {
+    pub fn render(&self, world: &World, camera: &Camera, sampler: &mut Sampler<impl Rng>) {
         eprintln!(
             "Output image dimensions: {}x{}",
             camera.image_width, camera.image_height
@@ -54,7 +48,7 @@ impl Renderer {
             for i in 0..camera.image_width {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _ in 0..self.samples_per_pixel {
-                    let offset = self.sample_square(rng);
+                    let offset = sampler.sample_square();
                     let ray = camera.get_ray(i as i32, j as i32, offset);
                     pixel_color = pixel_color + ray_color(&ray, world);
                 }

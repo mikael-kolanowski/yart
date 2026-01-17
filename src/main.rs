@@ -9,6 +9,7 @@ use std::{env, fs, process};
 use crate::config::*;
 use crate::math::interval::Interval;
 use crate::math::*;
+use crate::rendering::sampler::Sampler;
 use crate::rendering::*;
 
 struct World {
@@ -84,7 +85,9 @@ fn main() {
 
     let camera = Camera::new(config.camera.aspect_ratio, config.camera.image_width);
 
+    let mut sampler = Sampler::new(&mut rng);
+
     let renderer = Renderer::new(config.renderer.samples_per_pixel);
 
-    renderer.render(&world, &camera, &mut rng);
+    renderer.render(&world, &camera, &mut sampler);
 }
