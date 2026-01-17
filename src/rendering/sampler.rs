@@ -53,7 +53,7 @@ mod tests {
     use super::*;
 
     #[test]
-    pub fn random_unit_vector_is_unit_ii() {
+    pub fn random_unit_vector_is_unit() {
         let rng = rand::prelude::SmallRng::seed_from_u64(1337);
         let mut sampler = RandomSampler::new(rng);
 

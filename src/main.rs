@@ -92,5 +92,6 @@ fn main() {
         config.renderer.max_bounces,
     );
 
-    renderer.render(&world, &camera, &mut sampler);
+    let image = renderer.render(&world, &camera, &mut sampler, true);
+    image.write_ppm();
 }
