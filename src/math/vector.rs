@@ -104,6 +104,17 @@ impl ops::Div<f64> for Vec3 {
     }
 }
 
+impl ops::Neg for Vec3 {
+    type Output = Vec3;
+    fn neg(self) -> Self::Output {
+        Vec3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
 pub type Point3 = Vec3;
 
 #[cfg(test)]
@@ -138,5 +149,12 @@ pub mod tests {
         let v = Vec3::new(1.0, 1.0, 1.0);
         let expected = 6.0;
         assert_eq!(u.dot(v), expected);
+    }
+
+    #[test]
+    fn test_negate() {
+        assert_eq!(-Vec3::ZERO, Vec3::ZERO);
+
+        assert_eq!(-Vec3::new(1.0, 2.0, 3.0), Vec3::new(-1.0, -2.0, -3.0));
     }
 }

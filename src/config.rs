@@ -17,6 +17,7 @@ pub struct CameraConfig {
 #[derive(Debug, Deserialize)]
 pub struct RendererConfig {
     pub samples_per_pixel: u32,
+    pub max_bounces: u32,
 }
 
 fn deserialize_aspect_ratio<'de, D>(deserializer: D) -> Result<f64, D::Error>

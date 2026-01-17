@@ -15,6 +15,12 @@ impl Color {
         b: 1.0,
     };
 
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+    };
+
     pub fn new(r: f64, g: f64, b: f64) -> Self {
         Self { r: r, g: g, b: b }
     }

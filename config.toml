@@ -6,4 +6,5 @@ image_width = 400
 aspect_ratio = "16:9"
 
 [renderer]
-samples_per_pixel = 5
+samples_per_pixel = 20
+max_bounces = 10
