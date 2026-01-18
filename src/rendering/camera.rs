@@ -11,7 +11,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: u32) -> Self {
+    pub fn new(aspect_ratio: f64, image_width: u32, fov: u32) -> Self {
         let image_height = {
             let w = (image_width as f64 / aspect_ratio) as u32;
             if w < 1 { 1 } else { w }
@@ -20,7 +20,9 @@ impl Camera {
         let center = Point3::ZERO;
 
         let focal_length = 1.0;
-        let viewport_height = 2.0;
+        let theta = (fov as f64).to_radians();
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h * focal_length;
         let viewport_width = viewport_height * (image_width as f64) / (image_height as f64);
         let camera_center = Point3::ZERO;
 

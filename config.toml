@@ -4,6 +4,7 @@ width = 400
 [camera]
 image_width = 400
 aspect_ratio = "16:9"
+field_of_view = 90
 
 [renderer]
 samples_per_pixel = 20

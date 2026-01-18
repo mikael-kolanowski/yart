@@ -97,7 +97,11 @@ fn main() {
 
     let mut rng = rand::rng();
 
-    let camera = Camera::new(config.camera.aspect_ratio, config.camera.image_width);
+    let camera = Camera::new(
+        config.camera.aspect_ratio,
+        config.camera.image_width,
+        config.camera.field_of_view,
+    );
 
     let mut sampler = RandomSampler::new(&mut rng);
 

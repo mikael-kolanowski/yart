@@ -12,6 +12,7 @@ pub struct CameraConfig {
     pub image_width: u32,
     #[serde(deserialize_with = "deserialize_aspect_ratio")]
     pub aspect_ratio: f64,
+    pub field_of_view: u32,
 }
 
 #[derive(Debug, Deserialize)]

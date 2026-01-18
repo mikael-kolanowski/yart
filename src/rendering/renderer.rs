@@ -131,7 +131,7 @@ mod tests {
         let rng = SmallRng::seed_from_u64(1337);
         let mut sampler = RandomSampler::new(rng);
 
-        let camera = Camera::new(1.0, 32);
+        let camera = Camera::new(1.0, 32, 90);
 
         let world = World::new();
 
