@@ -25,12 +25,32 @@ impl Color {
         Self { r: r, g: g, b: b }
     }
 
+    fn map(&self, f: fn(f64) -> f64) -> Self {
+        Self {
+            r: f(self.r),
+            g: f(self.g),
+            b: f(self.b),
+        }
+    }
+
+    fn linear_to_gamma(&self) -> Self {
+        self.map(|component| {
+            if component > 0.0 {
+                component.sqrt()
+            } else {
+                0.0
+            }
+        })
+    }
+
     pub fn write(&self) -> String {
+        let c = self.linear_to_gamma();
+
         // Translate the [0, 1] component values to the range [0, 255]
         let intensity = Interval::new(0.0, 0.999);
-        let ir = (256.0 * intensity.clamp(self.r)) as i32;
-        let ig = (256.0 * intensity.clamp(self.g)) as i32;
-        let ib = (256.0 * intensity.clamp(self.b)) as i32;
+        let ir = (256.0 * intensity.clamp(c.r)) as i32;
+        let ig = (256.0 * intensity.clamp(c.g)) as i32;
+        let ib = (256.0 * intensity.clamp(c.b)) as i32;
 
         return format!("{} {} {}", ir, ig, ib);
     }
