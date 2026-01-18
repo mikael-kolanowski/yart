@@ -34,6 +34,10 @@ impl Vec3 {
         return Vec3::new(self.x / len, self.y / len, self.z / len);
     }
 
+    pub fn reflect(self, normal: Self) -> Self {
+        return self - 2.0 * self.dot(normal) * normal;
+    }
+
     pub fn is_near_zero(self) -> bool {
         let h = 1e-8;
         self.x.abs() < h && self.x.abs() < h && self.x.abs() < h

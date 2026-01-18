@@ -39,7 +39,7 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
+    fn scatter(&self, _ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
         // If we get a random direction directly opposite the normal bad things can happen
         let scatter_direction = {
             let d = hit.normal + sampler.unit_vector();
@@ -66,5 +66,31 @@ impl Material for NormalVisualizer {
 
     fn emitted(&self, hit: &HitInfo) -> Color {
         Color::from(0.5 * (hit.normal + Vec3::ONES))
+    }
+}
+
+pub struct Metal {
+    pub albedo: Color,
+    pub fuzz: f64,
+}
+
+impl Metal {
+    pub fn new(albedo: Color, fuzz: f64) -> Self {
+        Self { albedo, fuzz }
+    }
+}
+
+impl Material for Metal {
+    fn scatter(&self, ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
+        let reflected =
+            ray.direction.reflect(hit.normal).normalized() + (self.fuzz * sampler.unit_vector());
+        let scattered = Ray::new(hit.location, reflected);
+
+        // Absorb the ray we scatter below the surface
+        if scattered.direction.dot(hit.normal) > 0.0 {
+            Some((self.albedo, scattered))
+        } else {
+            None
+        }
     }
 }
