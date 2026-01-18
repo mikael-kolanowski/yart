@@ -4,6 +4,7 @@ mod math;
 mod progressbar;
 mod rendering;
 
+use std::sync::Arc;
 use std::{env, fs, process};
 
 use crate::config::*;
@@ -69,16 +70,21 @@ fn main() {
         process::exit(1);
     });
 
+    let mat1 = Arc::new(material::Lambertian::new(color::Color::new(0.5, 0.2, 0.7)));
+    let mat2 = Arc::new(material::Lambertian::new(color::Color::new(0.1, 0.1, 0.1)));
+
     // World
     let mut world = World::new();
     world.add(Box::new(geometry::Sphere {
         center: Point3::new(0.0, 0.0, -1.0),
         radius: 0.5,
+        material: mat1.clone(),
     }));
 
     world.add(Box::new(geometry::Sphere {
         center: Point3::new(0.0, -100.5, -1.0),
         radius: 100.0,
+        material: mat2.clone(),
     }));
 
     let mut rng = rand::rng();

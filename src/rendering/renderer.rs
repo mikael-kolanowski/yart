@@ -1,13 +1,12 @@
 use crate::World;
 use crate::color::Color;
 use crate::progressbar::ProgressBar;
-use rand::Rng;
 use std::time::Instant;
 
 use crate::math::{Lerp, Ray, geometry::Hittable, interval::Interval};
 
 use super::camera::Camera;
-use super::sampler::RandomSampler;
+use super::sampler::Sampler;
 
 pub struct Image {
     width: u32,
@@ -56,21 +55,20 @@ impl Renderer {
         ray: Ray,
         max_bounces: u32,
         world: &World,
-        sampler: &mut RandomSampler<impl Rng>,
+        sampler: &mut dyn Sampler,
     ) -> Color {
         if max_bounces <= 0 {
             return Color::BLACK;
         }
         if let Some(hit_info) = world.check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
         {
-            let normal = hit_info.normal.normalized();
-            let bounce_direction = normal + sampler.random_unit_vector();
-            return self.ray_color(
-                Ray::new(hit_info.location, bounce_direction),
-                max_bounces - 1,
-                world,
-                sampler,
-            ) * 0.5;
+            if let Some((attenuation, scattered)) =
+                hit_info.material.scatter(ray, &hit_info, sampler)
+            {
+                return attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler);
+            } else {
+                return hit_info.material.emitted(&hit_info);
+            }
         }
 
         let t = 0.5 * (ray.direction.normalized().y + 1.0);
@@ -81,7 +79,7 @@ impl Renderer {
         &self,
         world: &World,
         camera: &Camera,
-        sampler: &mut RandomSampler<impl Rng>,
+        sampler: &mut dyn Sampler,
         show_progress: bool,
     ) -> Image {
         eprintln!(
@@ -99,7 +97,7 @@ impl Renderer {
             for i in 0..camera.image_width {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _ in 0..self.samples_per_pixel {
-                    let offset = sampler.sample_square();
+                    let offset = sampler.in_square();
                     let ray = camera.get_ray(i as i32, j as i32, offset);
                     pixel_color =
                         pixel_color + self.ray_color(ray, self.max_bounces, world, sampler);
@@ -124,6 +122,8 @@ impl Renderer {
 #[cfg(test)]
 mod tests {
     use rand::{SeedableRng, rngs::SmallRng};
+
+    use crate::rendering::sampler::RandomSampler;
 
     use super::*;
     #[test]

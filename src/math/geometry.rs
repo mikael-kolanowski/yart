@@ -1,21 +1,25 @@
+use std::sync::Arc;
+
 use super::interval::Interval;
 use super::ray::Ray;
 use super::vector::{Point3, Vec3};
+use crate::Material;
 
 pub struct HitInfo {
     pub location: Point3,
     pub normal: Vec3,
     pub t: f64,
+    pub material: Arc<dyn Material>,
 }
 
 pub trait Hittable {
     fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f64,
+    pub material: Arc<dyn Material>,
 }
 
 impl Hittable for Sphere {
@@ -45,6 +49,7 @@ impl Hittable for Sphere {
             location: point,
             normal: normal,
             t: root,
+            material: self.material.clone(),
         });
     }
 }

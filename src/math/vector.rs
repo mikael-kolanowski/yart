@@ -34,6 +34,11 @@ impl Vec3 {
         return Vec3::new(self.x / len, self.y / len, self.z / len);
     }
 
+    pub fn is_near_zero(self) -> bool {
+        let h = 1e-8;
+        self.x.abs() < h && self.x.abs() < h && self.x.abs() < h
+    }
+
     pub fn to_point(&self) -> Point3 {
         return Point3 {
             x: self.x,
