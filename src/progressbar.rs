@@ -55,7 +55,7 @@ impl ProgressBar {
         );
 
         // Percent
-        output.push_str(&format!(" {:.1}%", percent * 100.0));
+        output.push_str(&format!(" {:.0}%", percent * 100.0));
 
         // Count
         output.push_str(&format!(" ({}/{})", self.current, self.total));
