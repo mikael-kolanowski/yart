@@ -123,7 +123,7 @@ impl Renderer {
 mod tests {
     use rand::{SeedableRng, rngs::SmallRng};
 
-    use crate::rendering::sampler::RandomSampler;
+    use crate::{math::Vec3, rendering::sampler::RandomSampler};
 
     use super::*;
     #[test]
@@ -131,7 +131,7 @@ mod tests {
         let rng = SmallRng::seed_from_u64(1337);
         let mut sampler = RandomSampler::new(rng);
 
-        let camera = Camera::new(1.0, 32, 90);
+        let camera = Camera::new(1.0, 32, 90, Vec3::ZERO, Vec3::new(0.0, -1.0, 0.0));
 
         let world = World::new();
 

@@ -21,6 +21,14 @@ impl Vec3 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
+    pub fn cross(self, rhs: Vec3) -> Self {
+        Self {
+            x: self.y * rhs.z - self.z * rhs.y,
+            y: self.z * rhs.x - self.x * rhs.z,
+            z: self.x * rhs.y - self.y * rhs.x,
+        }
+    }
+
     pub fn length(self) -> f64 {
         (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
     }
@@ -41,6 +49,11 @@ impl Vec3 {
     pub fn is_near_zero(self) -> bool {
         let h = 1e-8;
         self.x.abs() < h && self.x.abs() < h && self.x.abs() < h
+    }
+
+    pub fn is_orthogonal_to(self, other: Self) -> bool {
+        let h = 1e-8;
+        self.dot(other) < h
     }
 
     pub fn to_point(&self) -> Point3 {
@@ -158,6 +171,20 @@ pub mod tests {
         let v = Vec3::new(1.0, 1.0, 1.0);
         let expected = 6.0;
         assert_eq!(u.dot(v), expected);
+    }
+
+    #[test]
+    fn test_cross() {
+        let u = Vec3::new(1.0, 0.0, 0.0);
+        let v = Vec3::new(0.0, 1.0, 0.0);
+
+        assert_eq!(u.cross(v), Vec3::new(0.0, 0.0, 1.0));
+
+        let a = Vec3::new(1.2, 5.6, 0.2);
+        let b = Vec3::new(4.0, 1.0, 0.0);
+        let c = a.cross(b);
+        assert!(a.is_orthogonal_to(c));
+        assert!(b.is_orthogonal_to(c));
     }
 
     #[test]
