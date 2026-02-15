@@ -1,6 +1,7 @@
 use crate::World;
 use crate::color::Color;
 use crate::progressbar::ProgressBar;
+use std::io::Write;
 use std::time::Instant;
 
 use crate::math::{Lerp, Ray, geometry::Hittable, interval::Interval};
@@ -27,12 +28,12 @@ impl Image {
         self.pixels.push(color);
     }
 
-    pub fn write_ppm(&self) {
-        println!("P3");
-        println!("{} {}", self.width, self.height);
-        println!("255"); // Max color value
+    pub fn write_ppm<W: Write>(&self, writer: &mut W) {
+        writeln!(writer, "P3");
+        writeln!(writer, "{} {}", self.width, self.height);
+        writeln!(writer, "255"); // Max color value
         for color in &self.pixels {
-            println!("{}", color.write());
+            writeln!(writer, "{}", color.write());
         }
     }
 }

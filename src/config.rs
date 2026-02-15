@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::Deserialize;
 use serde::de::{self, Deserializer};
 
@@ -5,6 +7,7 @@ use serde::de::{self, Deserializer};
 pub struct Config {
     pub camera: CameraConfig,
     pub renderer: RendererConfig,
+    pub image: ImageConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -19,6 +22,11 @@ pub struct CameraConfig {
 pub struct RendererConfig {
     pub samples_per_pixel: u32,
     pub max_bounces: u32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ImageConfig {
+    pub output: PathBuf,
 }
 
 fn deserialize_aspect_ratio<'de, D>(deserializer: D) -> Result<f64, D::Error>

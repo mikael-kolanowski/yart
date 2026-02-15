@@ -4,6 +4,8 @@ mod math;
 mod progressbar;
 mod rendering;
 
+use std::fs::File;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::{env, fs, process};
 
@@ -49,6 +51,10 @@ fn read_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
     let contents = fs::read_to_string(path)?;
     let config: Config = toml::from_str(&contents)?;
     Ok(config)
+}
+
+fn open_file(path: PathBuf) -> std::io::Result<File> {
+    File::create(path)
 }
 
 fn print_usage() {
@@ -113,5 +119,6 @@ fn main() {
     );
 
     let image = renderer.render(&world, &camera, &mut sampler, true);
-    image.write_ppm();
+    let mut output_file = open_file(config.image.output).expect("Unable to open output file");
+    image.write_ppm(&mut output_file);
 }
