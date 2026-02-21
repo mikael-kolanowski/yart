@@ -29,11 +29,11 @@ impl Image {
     }
 
     pub fn write_ppm<W: Write>(&self, writer: &mut W) {
-        writeln!(writer, "P3");
-        writeln!(writer, "{} {}", self.width, self.height);
-        writeln!(writer, "255"); // Max color value
+        let _ = writeln!(writer, "P3");
+        let _ = writeln!(writer, "{} {}", self.width, self.height);
+        let _ = writeln!(writer, "255"); // Max color value
         for color in &self.pixels {
-            writeln!(writer, "{}", color.write());
+            let _ = writeln!(writer, "{}", color.write());
         }
     }
 }
