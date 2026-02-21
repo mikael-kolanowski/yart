@@ -29,6 +29,8 @@ Example `config.toml`:
 image_width = 400
 aspect_ratio = "16:9"
 field_of_view = 90
+position = "0, 0, 0"
+look_at = "1, 1, 1"
 
 [renderer]
 samples_per_pixel = 100

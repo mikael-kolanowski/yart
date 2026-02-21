@@ -107,8 +107,8 @@ fn main() {
         config.camera.aspect_ratio,
         config.camera.image_width,
         config.camera.field_of_view,
-        Vec3::new(-2.0, 2.0, 1.0),
-        Vec3::new(0.0, 0.0, -1.0),
+        config.camera.position,
+        config.camera.look_at,
     );
 
     let mut sampler = RandomSampler::new(&mut rng);

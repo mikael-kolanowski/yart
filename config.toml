@@ -6,6 +6,8 @@ output = "img.ppm"
 image_width = 400
 aspect_ratio = "16:9"
 field_of_view = 90
+position = "-2, 2, 1"
+look_at = "0, 0, -1"
 
 [renderer]
 samples_per_pixel = 20

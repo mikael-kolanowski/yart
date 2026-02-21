@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use serde::de::{self, Deserializer};
 
+use crate::math::Vec3;
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub camera: CameraConfig,
@@ -16,6 +18,10 @@ pub struct CameraConfig {
     #[serde(deserialize_with = "deserialize_aspect_ratio")]
     pub aspect_ratio: f64,
     pub field_of_view: u32,
+    #[serde(deserialize_with = "deserialize_vec3")]
+    pub position: Vec3,
+    #[serde(deserialize_with = "deserialize_vec3")]
+    pub look_at: Vec3,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,4 +58,32 @@ where
     }
 
     Ok(width / height)
+}
+
+fn deserialize_vec3<'de, D>(deserializer: D) -> Result<Vec3, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+
+    let parts: Vec<_> = s.split(",").map(|part| part.trim()).collect();
+
+    if parts.len() != 3 {
+        return Err(de::Error::custom(
+            "vectors should have exactly three components",
+        ))?;
+    }
+
+    let x: f64 = parts[0]
+        .parse()
+        .map_err(|_| de::Error::custom("vector components must be floating point numbers"))?;
+    let y: f64 = parts[1]
+        .parse()
+        .map_err(|_| de::Error::custom("vector components must be floating point numbers"))?;
+    let z: f64 = parts[2]
+        .parse()
+        .map_err(|_| de::Error::custom("vector components must be floating point numbers"))?;
+
+    let v = Vec3::new(x, y, z);
+    Ok(v)
 }
