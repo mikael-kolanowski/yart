@@ -10,6 +10,8 @@ pub struct Config {
     pub camera: CameraConfig,
     pub renderer: RendererConfig,
     pub image: ImageConfig,
+    pub materials: Vec<MaterialConfig>,
+    pub objects: Vec<ObjectConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -33,6 +35,39 @@ pub struct RendererConfig {
 #[derive(Debug, Deserialize)]
 pub struct ImageConfig {
     pub output: PathBuf,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type")]
+pub enum MaterialConfig {
+    #[serde(rename = "lambertian")]
+    Lambertian {
+        name: String,
+        #[serde(deserialize_with = "deserialize_vec3")]
+        albedo: Vec3,
+    },
+
+    #[serde(rename = "metal")]
+    Metal {
+        name: String,
+        #[serde(deserialize_with = "deserialize_vec3")]
+        albedo: Vec3,
+        fuzz: f64,
+    },
+    #[serde(rename = "normal_vis")]
+    NormalVisualization { name: String },
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type")]
+pub enum ObjectConfig {
+    #[serde(rename = "sphere")]
+    Sphere {
+        #[serde(deserialize_with = "deserialize_vec3")]
+        position: Vec3,
+        radius: f64,
+        material: String,
+    },
 }
 
 fn deserialize_aspect_ratio<'de, D>(deserializer: D) -> Result<f64, D::Error>

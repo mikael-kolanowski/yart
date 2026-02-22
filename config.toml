@@ -12,3 +12,37 @@ look_at = "0, 0, -1"
 [renderer]
 samples_per_pixel = 20
 max_bounces = 10
+
+[[materials]]
+type = "lambertian"
+name = "matte"
+albedo = "0.1, 0.2, 0.5"
+
+[[materials]]
+type = "metal"
+name = "shiny"
+albedo = "0.8, 0.8, 0.8"
+fuzz = 0.3
+
+[[materials]]
+type = "lambertian"
+name = "ground"
+albedo = "0.8, 0.8, 0"
+
+[[objects]]
+type = "sphere"
+position = "0, 0, -1"
+radius = 0.5
+material = "matte"
+
+[[objects]]
+type = "sphere"
+position = "-1, 0, -1"
+radius = 0.5
+material = "shiny"
+
+[[objects]]
+type = "sphere"
+position = "0, -100.5, -1"
+radius = 100
+material = "ground"

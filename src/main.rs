@@ -4,6 +4,7 @@ mod math;
 mod progressbar;
 mod rendering;
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use crate::color::Color;
 use crate::config::*;
 use crate::math::interval::Interval;
 use crate::math::*;
+use crate::rendering::material::{Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sampler::RandomSampler;
 use crate::rendering::*;
 
@@ -25,6 +27,46 @@ impl World {
         Self {
             objects: Vec::new(),
         }
+    }
+
+    fn from_config(config: &Config) -> Self {
+        let mut material_map: HashMap<String, Arc<dyn Material>> = HashMap::new();
+        for material_config in &config.materials {
+            match material_config {
+                MaterialConfig::Lambertian { name, albedo } => {
+                    let lamb = Lambertian::new(Color::from(*albedo));
+                    material_map.insert(name.clone(), Arc::new(lamb))
+                }
+                MaterialConfig::Metal { name, albedo, fuzz } => {
+                    let metal = Metal::new(Color::from(*albedo), *fuzz);
+                    material_map.insert(name.clone(), Arc::new(metal))
+                }
+                MaterialConfig::NormalVisualization { name } => {
+                    let mat = NormalVisualizer;
+                    material_map.insert(name.clone(), Arc::new(mat))
+                }
+            };
+        }
+
+        let mut objects: Vec<Box<dyn Hittable>> = Vec::new();
+        for object_config in &config.objects {
+            match object_config {
+                ObjectConfig::Sphere {
+                    position,
+                    radius,
+                    material,
+                } => {
+                    let material = material_map.get(material).expect("unknown material");
+                    objects.push(Box::new(Sphere {
+                        center: *position,
+                        radius: *radius,
+                        material: material.clone(),
+                    }));
+                }
+            }
+        }
+
+        World { objects: objects }
     }
 
     fn add(&mut self, object: Box<dyn Hittable>) {
@@ -77,29 +119,7 @@ fn main() {
         process::exit(1);
     });
 
-    let material_ground = Arc::new(material::Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    let mat_sph1 = Arc::new(material::Lambertian::new(Color::new(0.1, 0.2, 0.5)));
-    let mat_sph2 = Arc::new(material::Metal::new(Color::new(0.8, 0.8, 0.8), 0.3));
-
-    // World
-    let mut world = World::new();
-    world.add(Box::new(geometry::Sphere {
-        center: Point3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-        material: mat_sph1.clone(),
-    }));
-
-    world.add(Box::new(geometry::Sphere {
-        center: Point3::new(-1.0, 0.0, -1.0),
-        radius: 0.5,
-        material: mat_sph2.clone(),
-    }));
-
-    world.add(Box::new(geometry::Sphere {
-        center: Point3::new(0.0, -100.5, -1.0),
-        radius: 100.0,
-        material: material_ground.clone(),
-    }));
+    let world = World::from_config(&config);
 
     let mut rng = rand::rng();
 
