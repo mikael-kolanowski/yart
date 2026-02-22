@@ -6,7 +6,6 @@ mod rendering;
 mod world;
 
 use std::fs::File;
-use std::path::PathBuf;
 use std::{env, fs, process};
 
 use crate::config::*;
@@ -20,26 +19,19 @@ fn read_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
     Ok(config)
 }
 
-fn open_file(path: PathBuf) -> std::io::Result<File> {
-    File::create(path)
-}
-
 fn print_usage() {
     println!("Usage: ");
     println!("yart <config.toml>");
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
+    let config_path = env::args().nth(1).unwrap_or_else(|| {
         eprintln!("Error: no config file supplied");
         print_usage();
         process::exit(1);
-    }
+    });
 
-    let config_path = &args[1];
-
-    let config = read_config(config_path).unwrap_or_else(|err| {
+    let config = read_config(&config_path).unwrap_or_else(|err| {
         eprintln!("Could not read config: {err}");
         process::exit(1);
     });
@@ -64,6 +56,6 @@ fn main() {
     );
 
     let image = renderer.render(&world, &camera, &mut sampler, true);
-    let mut output_file = open_file(config.image.output).expect("Unable to open output file");
+    let mut output_file = File::create(config.image.output).expect("Unable to open output file");
     image.write_ppm(&mut output_file);
 }
