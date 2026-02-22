@@ -50,7 +50,7 @@ fn main() {
 
     let camera = Camera::new(
         config.camera.aspect_ratio,
-        config.camera.image_width,
+        config.image.width,
         config.camera.field_of_view,
         config.camera.position,
         config.camera.look_at,

@@ -3,7 +3,6 @@ width = 400
 output = "img.ppm"
 
 [camera]
-image_width = 400
 aspect_ratio = "16:9"
 field_of_view = 90
 position = "-2, 2, 1"

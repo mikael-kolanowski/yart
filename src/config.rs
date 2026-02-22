@@ -16,7 +16,6 @@ pub struct Config {
 
 #[derive(Debug, Deserialize)]
 pub struct CameraConfig {
-    pub image_width: u32,
     #[serde(deserialize_with = "deserialize_aspect_ratio")]
     pub aspect_ratio: f64,
     pub field_of_view: u32,
@@ -34,6 +33,7 @@ pub struct RendererConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct ImageConfig {
+    pub width: u32,
     pub output: PathBuf,
 }
 
