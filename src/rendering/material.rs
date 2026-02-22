@@ -1,5 +1,5 @@
-use crate::Ray;
 use crate::color::Color;
+use crate::math::Ray;
 use crate::math::{HitInfo, Vec3};
 use crate::rendering::sampler::Sampler;
 
