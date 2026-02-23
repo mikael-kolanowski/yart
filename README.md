@@ -26,7 +26,6 @@ The renderer is configured using a TOML file.
 Example `config.toml`:
 ```toml
 [camera]
-image_width = 400
 aspect_ratio = "16:9"
 field_of_view = 90
 position = "0, 0, 0"
@@ -37,7 +36,24 @@ samples_per_pixel = 100
 max_bounces = 8
 
 [image]
+width = 400
 output = "out.ppm"
+
+[sky]
+type = "linear-gradient"
+from = "0, 0, 0"
+to = "0.5, 0.7, 1"
+
+[[materials]]
+type = "lambertian"
+name = "matte"
+
+[[objects]]
+type = "sphere"
+position = "0, 0, -1"
+radius = 0.5
+material = "matte"
+albedo = "0.1, 0.2, 0.5"
 ```
 
 Output
