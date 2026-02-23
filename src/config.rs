@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use serde::de::{self, Deserializer};
 
+use crate::color::Color;
 use crate::math::Vec3;
 
 #[derive(Debug, Deserialize)]
@@ -12,6 +13,7 @@ pub struct Config {
     pub image: ImageConfig,
     pub materials: Vec<MaterialConfig>,
     pub objects: Vec<ObjectConfig>,
+    pub sky: SkyConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,6 +37,24 @@ pub struct RendererConfig {
 pub struct ImageConfig {
     pub width: u32,
     pub output: PathBuf,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type")]
+pub enum SkyConfig {
+    #[serde(rename = "linear-gradient")]
+    LinearGradient {
+        #[serde(deserialize_with = "deserialize_vec3")]
+        from: Vec3,
+        #[serde(deserialize_with = "deserialize_vec3")]
+        to: Vec3,
+    },
+
+    #[serde(rename = "solid")]
+    Solid {
+        #[serde(deserialize_with = "deserialize_vec3")]
+        color: Vec3,
+    },
 }
 
 #[derive(Debug, Deserialize, Clone)]

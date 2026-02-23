@@ -1,5 +1,6 @@
 use crate::World;
 use crate::color::Color;
+use crate::config::SkyConfig;
 use crate::progressbar::ProgressBar;
 use std::io::Write;
 use std::time::Instant;
@@ -72,8 +73,7 @@ impl Renderer {
             }
         }
 
-        let t = 0.5 * (ray.direction.normalized().y + 1.0);
-        Color::lerp(Color::WHITE, Color::new(0.5, 0.7, 1.0), t)
+        world.skybox.color(ray)
     }
 
     pub fn render(

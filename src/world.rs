@@ -4,18 +4,24 @@ use crate::color::Color;
 use crate::math::interval::Interval;
 use crate::math::{HitInfo, Ray, Sphere};
 use crate::rendering::material::{DummyMaterial, Lambertian, Metal, NormalVisualizer};
+use crate::rendering::sky::SkyBox;
 use crate::{math::Hittable, rendering::Material};
 
-use crate::config::{Config, MaterialConfig, ObjectConfig};
+use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
+use crate::rendering::sky::{LinearGradientSkyBox, SolidColorSkyBox};
 
 pub struct World {
     objects: Vec<Box<dyn Hittable>>,
+    pub skybox: Box<dyn SkyBox>,
 }
 
 impl World {
     pub fn new() -> Self {
         Self {
             objects: Vec::new(),
+            skybox: Box::new(SolidColorSkyBox {
+                color: Color::WHITE,
+            }),
         }
     }
 
@@ -60,11 +66,25 @@ impl World {
             }
         }
 
-        World { objects: objects }
+        let skybox = build_skybox(&config.sky);
+
+        World { objects, skybox }
     }
 
     fn add(&mut self, object: Box<dyn Hittable>) {
         self.objects.push(object);
+    }
+}
+
+fn build_skybox(config: &SkyConfig) -> Box<dyn SkyBox> {
+    match config {
+        SkyConfig::LinearGradient { from, to } => Box::new(LinearGradientSkyBox {
+            from: Color::from(*from),
+            to: Color::from(*to),
+        }),
+        SkyConfig::Solid { color } => Box::new(SolidColorSkyBox {
+            color: Color::from(*color),
+        }),
     }
 }
 
