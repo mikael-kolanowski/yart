@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::color::Color;
 use crate::math::interval::Interval;
 use crate::math::{HitInfo, Ray, Sphere};
-use crate::rendering::material::{Lambertian, Metal, NormalVisualizer};
+use crate::rendering::material::{DummyMaterial, Lambertian, Metal, NormalVisualizer};
 use crate::{math::Hittable, rendering::Material};
 
 use crate::config::{Config, MaterialConfig, ObjectConfig};
@@ -21,6 +21,7 @@ impl World {
 
     pub fn from_config(config: &Config) -> Self {
         let mut material_map: HashMap<String, Arc<dyn Material>> = HashMap::new();
+        let fallback_material: Arc<dyn Material> = Arc::new(DummyMaterial {});
         for material_config in &config.materials {
             match material_config {
                 MaterialConfig::Lambertian { name, albedo } => {
@@ -46,7 +47,10 @@ impl World {
                     radius,
                     material,
                 } => {
-                    let material = material_map.get(material).expect("unknown material");
+                    let material = material_map.get(material).unwrap_or_else(|| {
+                        eprintln!("Warning: material {material} could not be resolved");
+                        &fallback_material
+                    });
                     objects.push(Box::new(Sphere {
                         center: *position,
                         radius: *radius,
