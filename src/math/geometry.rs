@@ -53,3 +53,88 @@ impl Hittable for Sphere {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::rendering::material::DummyMaterial;
+
+    use super::*;
+
+    fn unit_sphere(center: Vec3) -> Sphere {
+        Sphere {
+            center,
+            radius: 1.0,
+            material: Arc::new(DummyMaterial),
+        }
+    }
+
+    #[test]
+    fn sphere_direct_hit() {
+        let sphere = unit_sphere(Vec3::new(0.0, 0.0, -5.0));
+
+        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+
+        let hit = sphere
+            .check_intersection(&ray, Interval::new(0.0, 1000.0))
+            .unwrap();
+
+        assert!((hit.t - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn sphere_miss() {
+        let sphere = unit_sphere(Vec3::new(0.0, 0.0, -5.0));
+        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 1.0, 0.0));
+
+        let hit = sphere.check_intersection(&ray, Interval::new(0.0, 1000.0));
+
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn sphere_tangent_hit() {
+        let sphere = unit_sphere(Vec3::new(0.0, 1.0, -5.0));
+        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+
+        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
+        assert!(hit.is_some());
+
+        let rec = hit.unwrap();
+
+        assert!((rec.t - 5.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn ray_origin_inside_sphere() {
+        let sphere = unit_sphere(Vec3::ZERO);
+        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, 1.0));
+
+        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
+        assert!(hit.is_some());
+
+        let rec = hit.unwrap();
+
+        assert!(rec.t > 0.0);
+    }
+
+    #[test]
+    fn sphere_behind_ray() {
+        let sphere = unit_sphere(Vec3::new(0.0, 0.0, 5.0));
+        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+
+        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn sphere_interval_rejection() {
+        let sphere = unit_sphere(Vec3::new(0.0, 0.0, -5.0));
+
+        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+
+        // Reject valid hit by shrinking interval
+        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 3.0));
+
+        assert!(hit.is_none());
+    }
+}
