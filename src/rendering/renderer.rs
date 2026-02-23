@@ -1,43 +1,13 @@
 use crate::World;
 use crate::color::Color;
-use crate::config::SkyConfig;
+use crate::image::Image;
 use crate::progressbar::ProgressBar;
-use std::io::Write;
 use std::time::Instant;
 
-use crate::math::{Lerp, Ray, geometry::Hittable, interval::Interval};
+use crate::math::{Ray, geometry::Hittable, interval::Interval};
 
 use super::camera::Camera;
 use super::sampler::Sampler;
-
-pub struct Image {
-    width: u32,
-    height: u32,
-    pixels: Vec<Color>,
-}
-
-impl Image {
-    fn new(width: u32, height: u32) -> Self {
-        Self {
-            width,
-            height,
-            pixels: Vec::new(),
-        }
-    }
-
-    fn add_pixel(&mut self, color: Color) {
-        self.pixels.push(color);
-    }
-
-    pub fn write_ppm<W: Write>(&self, writer: &mut W) {
-        let _ = writeln!(writer, "P3");
-        let _ = writeln!(writer, "{} {}", self.width, self.height);
-        let _ = writeln!(writer, "255"); // Max color value
-        for color in &self.pixels {
-            let _ = writeln!(writer, "{}", color.write());
-        }
-    }
-}
 
 pub struct Renderer {
     samples_per_pixel: u32,
