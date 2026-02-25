@@ -1,5 +1,4 @@
 use crate::{color::Color, math::interval::Interval};
-#[cfg(test)]
 use std::io::Read;
 use std::io::Write;
 
@@ -36,12 +35,10 @@ fn color_to_ppm(color: &Color) -> String {
     return format!("{} {} {}", ir, ig, ib);
 }
 
-#[cfg(test)]
 fn gamma_to_linear(color: &Color) -> Color {
     color.map(|component| component * component)
 }
 
-#[cfg(test)]
 fn color_from_ppm(s: &str) -> Option<Color> {
     let parts: Vec<&str> = s.split(" ").collect();
     let r: u32 = parts[0].parse().ok()?;
@@ -61,7 +58,6 @@ impl Image {
         }
     }
 
-    #[cfg(test)]
     pub fn read_from_ppm<R: Read>(reader: &mut R) -> Result<Self, Error> {
         let mut contents = String::new();
         reader.read_to_string(&mut contents).unwrap();
