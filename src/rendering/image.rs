@@ -1,5 +1,7 @@
-use crate::color::Color;
-use std::io::{self, Read, Write};
+use crate::{color::Color, math::interval::Interval};
+#[cfg(test)]
+use std::io::Read;
+use std::io::Write;
 
 #[derive(Debug)]
 pub enum Error {
@@ -11,6 +13,43 @@ pub struct Image {
     pub width: u32,
     pub height: u32,
     pub pixels: Vec<Color>,
+}
+
+fn linear_to_gamma(color: &Color) -> Color {
+    color.map(|component| {
+        if component > 0.0 {
+            component.sqrt()
+        } else {
+            0.0
+        }
+    })
+}
+
+fn color_to_ppm(color: &Color) -> String {
+    let c = linear_to_gamma(color); //let c = self;
+    // Translate the [0, 1] component values to the range [0, 255]
+    let intensity = Interval::new(0.0, 0.999);
+    let ir = (256.0 * intensity.clamp(c.r)) as i32;
+    let ig = (256.0 * intensity.clamp(c.g)) as i32;
+    let ib = (256.0 * intensity.clamp(c.b)) as i32;
+
+    return format!("{} {} {}", ir, ig, ib);
+}
+
+#[cfg(test)]
+fn gamma_to_linear(color: &Color) -> Color {
+    color.map(|component| component * component)
+}
+
+#[cfg(test)]
+fn color_from_ppm(s: &str) -> Option<Color> {
+    let parts: Vec<&str> = s.split(" ").collect();
+    let r: u32 = parts[0].parse().ok()?;
+    let g: u32 = parts[1].parse().ok()?;
+    let b: u32 = parts[2].parse().ok()?;
+
+    let color = Color::new(r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0);
+    Some(gamma_to_linear(&color))
 }
 
 impl Image {
@@ -35,12 +74,8 @@ impl Image {
             .split_once(" ")
             .ok_or(Error::PPMParseError)?;
 
-        let width: u32 = width
-            .parse()
-            .map_err(|_err| Error::PPMParseError)?;
-        let height: u32 = height
-            .parse()
-            .map_err(|_err| Error::PPMParseError)?;
+        let width: u32 = width.parse().map_err(|_err| Error::PPMParseError)?;
+        let height: u32 = height.parse().map_err(|_err| Error::PPMParseError)?;
 
         // Skip max color value
         let _ = lines.next();
@@ -48,7 +83,7 @@ impl Image {
         let mut pixels: Vec<Color> = Vec::with_capacity(width as usize * height as usize);
 
         for line in lines {
-            if let Some(color) = Color::read(line) {
+            if let Some(color) = color_from_ppm(line) {
                 pixels.push(color);
             } else {
                 return Err(Error::PPMParseError);
@@ -71,7 +106,7 @@ impl Image {
         let _ = writeln!(writer, "{} {}", self.width, self.height);
         let _ = writeln!(writer, "255"); // Max color value
         for color in &self.pixels {
-            let _ = writeln!(writer, "{}", color.write());
+            let _ = writeln!(writer, "{}", color_to_ppm(color));
         }
     }
 }
@@ -95,7 +130,12 @@ mod tests {
             .sum();
 
         let mse = total_squared_error / (actual.width as f64 * actual.height as f64);
-        assert!(mse < threshold, "expected MSE {} to be less than threshold {}", mse, threshold);
+        assert!(
+            mse < threshold,
+            "expected MSE {} to be less than threshold {}",
+            mse,
+            threshold
+        );
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use super::math::{Lerp, Vec3, interval::Interval};
+use super::math::{Lerp, Vec3};
 use std::ops::{Add, Mul, Sub};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,51 +25,12 @@ impl Color {
         Self { r: r, g: g, b: b }
     }
 
-    fn map(&self, f: fn(f64) -> f64) -> Self {
+    pub fn map(&self, f: fn(f64) -> f64) -> Self {
         Self {
             r: f(self.r),
             g: f(self.g),
             b: f(self.b),
         }
-    }
-
-    fn linear_to_gamma(&self) -> Self {
-        self.map(|component| {
-            if component > 0.0 {
-                component.sqrt()
-            } else {
-                0.0
-            }
-        })
-    }
-
-    fn gamma_to_linear(&self) -> Self {
-        self.map(|component| {
-            component * component
-        })
-    }
-
-    pub fn write(&self) -> String {
-        let c = self.linear_to_gamma();        //let c = self;
-
-        // Translate the [0, 1] component values to the range [0, 255]
-        let intensity = Interval::new(0.0, 0.999);
-        let ir = (256.0 * intensity.clamp(c.r)) as i32;
-        let ig = (256.0 * intensity.clamp(c.g)) as i32;
-        let ib = (256.0 * intensity.clamp(c.b)) as i32;
-
-        return format!("{} {} {}", ir, ig, ib);
-    }
-
-    pub fn read(s: &str) -> Option<Self> {
-         let parts: Vec<&str> = s.split(" ").collect();
-            let r: u32 = parts[0].parse().ok()?;
-            let g: u32 = parts[1].parse().ok()?;
-            let b: u32 = parts[2].parse().ok()?;
-
-            let color = Color::new(r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0);
-            Some(color.gamma_to_linear())
-            //Some(color)
     }
 }
 
