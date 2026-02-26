@@ -11,7 +11,7 @@ use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
 use crate::rendering::sky::{LinearGradientSkyBox, SolidColorSkyBox};
 
 pub struct World {
-    objects: Vec<Box<dyn Hittable>>,
+    pub objects: Vec<Box<dyn Hittable>>,
     pub skybox: Box<dyn SkyBox>,
 }
 
