@@ -32,11 +32,10 @@ impl Camera {
         let h = (theta / 2.0).tan();
         let viewport_height = 2.0 * h * focal_length;
         let viewport_width = viewport_height * (image_width as f64) / (image_height as f64);
-        let camera_center = Point3::ZERO;
 
         // Calculate the basis for the camera's coordinate frame
         let w = (look_from - look_at).normalized();
-        let u = view_up.cross(w);
+        let u = view_up.cross(w).normalized();
         let v = w.cross(u);
 
         // Calculate the vectors across the horizontal and down the vertical viewport edges
@@ -48,7 +47,7 @@ impl Camera {
         let pixel_delta_v = viewport_v / image_height as f64;
 
         let viewport_upper_left =
-            camera_center - (focal_length * w) - viewport_u / 2.0 - viewport_v / 2.0;
+            center - (focal_length * w) - viewport_u / 2.0 - viewport_v / 2.0;
 
         let pixel_upper_left = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
