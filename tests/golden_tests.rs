@@ -90,7 +90,7 @@ fn red_sphere_with_ground_plane() {
         radius: 0.5,
         material: red,
     };
-    
+
     let ground = Sphere {
         center: Vec3::new(0.0, -100.5, -1.0),
         radius: 100.0,
@@ -132,7 +132,7 @@ fn matte_and_metal_sphere() {
         radius: 0.5,
         material: metal,
     };
-    
+
     let ground = Sphere {
         center: Vec3::new(0.0, -100.5, -1.0),
         radius: 100.0,

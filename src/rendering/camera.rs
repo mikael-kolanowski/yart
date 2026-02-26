@@ -46,8 +46,7 @@ impl Camera {
         let pixel_delta_u = viewport_u / image_width as f64;
         let pixel_delta_v = viewport_v / image_height as f64;
 
-        let viewport_upper_left =
-            center - (focal_length * w) - viewport_u / 2.0 - viewport_v / 2.0;
+        let viewport_upper_left = center - (focal_length * w) - viewport_u / 2.0 - viewport_v / 2.0;
 
         let pixel_upper_left = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 

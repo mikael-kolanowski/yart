@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use serde::de::{self, Deserializer};
 
-use crate::color::Color;
 use crate::math::Vec3;
 
 #[derive(Debug, Deserialize)]
