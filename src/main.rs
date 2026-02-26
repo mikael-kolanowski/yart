@@ -1,21 +1,9 @@
-mod color;
-mod config;
-mod math;
-mod progressbar;
-mod rendering;
-mod world;
-
 use std::fs::File;
 use std::{env, fs, process};
 
-use crate::config::*;
-use crate::rendering::sampler::RandomSampler;
-use crate::rendering::*;
-use crate::world::World;
-
-fn read_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
+fn read_config(path: &str) -> Result<yart::Config, Box<dyn std::error::Error>> {
     let contents = fs::read_to_string(path)?;
-    let config: Config = toml::from_str(&contents)?;
+    let config: yart::Config = toml::from_str(&contents)?;
     Ok(config)
 }
 
@@ -36,11 +24,11 @@ fn main() {
         process::exit(1);
     });
 
-    let world = World::from_config(&config);
+    let world = yart::World::from_config(&config);
 
     let mut rng = rand::rng();
 
-    let camera = Camera::new(
+    let camera = yart::Camera::new(
         config.camera.aspect_ratio,
         config.image.width,
         config.camera.field_of_view,
@@ -48,9 +36,9 @@ fn main() {
         config.camera.look_at,
     );
 
-    let mut sampler = RandomSampler::new(&mut rng);
+    let mut sampler = yart::rendering::sampler::RandomSampler::new(&mut rng);
 
-    let renderer = Renderer::new(
+    let renderer = yart::Renderer::new(
         config.renderer.samples_per_pixel,
         config.renderer.max_bounces,
     );
