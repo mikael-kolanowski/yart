@@ -58,3 +58,9 @@ albedo = "0.1, 0.2, 0.5"
 
 Output
 - The program writes a PPM image to the path specified by the `image.output` field in the config (for example `out.ppm`).
+
+# End-to-end testing
+This project uses test images in `golden_images/` to detect regressions. When making fundamental changes, regenerate the golden images by setting the `UPDATE_GOLDENS` environment variable.
+```bash
+UPDATE_GOLDENS=1 cargo test
+```
