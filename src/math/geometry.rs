@@ -137,4 +137,43 @@ mod tests {
 
         assert!(hit.is_none());
     }
+
+    #[test]
+    fn hit_center_front_face() {
+        let sphere = unit_sphere(Vec3::ZERO);
+
+        let ray = Ray::new(Vec3::new(0.0, 0.0, -3.0), Vec3::new(0.0, 0.0, 1.0));
+
+        let hit = sphere
+            .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
+            .expect("Ray should hit sphere");
+
+        // Hit point should be at z = -1
+        assert!((hit.location - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
+
+        // Normal should point straight back toward camera
+        assert!((hit.normal - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
+
+        // Normal must be unit length
+        assert!((hit.normal.length() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn hit_offset_point() {
+        let sphere = unit_sphere(Vec3::ZERO);
+
+        let ray = Ray::new(
+            Vec3::new(0.0, 0.0, -3.0),
+            Vec3::new(0.0, 0.2, 1.0).normalized(),
+        );
+
+        let hit = sphere
+            .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
+            .expect("Ray should hit sphere");
+
+        // Normal must match radial direction
+        let expected = (hit.location - Vec3::ZERO).normalized();
+
+        assert!((hit.normal - expected).length() < 1e-6);
+    }
 }
