@@ -9,6 +9,7 @@ pub struct HitInfo {
     pub location: Point3,
     pub normal: Vec3,
     pub t: f64,
+    pub front_face: bool,
     pub material: Arc<dyn Material>,
 }
 
@@ -44,11 +45,23 @@ impl Hittable for Sphere {
         }
 
         let point = ray.at(root);
-        let normal = (point - self.center) / self.radius;
+        let outward_normal = (point - self.center) / self.radius;
+        let mut normal = outward_normal;
+
+        let front_face = {
+            if ray.direction.dot(outward_normal) > 0.0 {
+                normal = -outward_normal;
+                false
+            } else {
+                true
+            }
+        };
+
         return Some(HitInfo {
             location: point,
-            normal: normal,
+            normal,
             t: root,
+            front_face,
             material: self.material.clone(),
         });
     }
@@ -56,6 +69,8 @@ impl Hittable for Sphere {
 
 #[cfg(test)]
 mod tests {
+    use core::f64;
+
     use crate::rendering::material::DummyMaterial;
 
     use super::*;
@@ -64,6 +79,14 @@ mod tests {
         Sphere {
             center,
             radius: 1.0,
+            material: Arc::new(DummyMaterial),
+        }
+    }
+
+    fn sphere(center: Vec3, radius: f64) -> Sphere {
+        Sphere {
+            center,
+            radius,
             material: Arc::new(DummyMaterial),
         }
     }
@@ -175,5 +198,28 @@ mod tests {
         let expected = (hit.location - Vec3::ZERO).normalized();
 
         assert!((hit.normal - expected).length() < 1e-6);
+    }
+
+    #[test]
+    fn sphere_front_face() {
+        let sphere = sphere(Vec3::ZERO, 10.0);
+
+        let ray_inner = Ray::new(Vec3::ZERO, Vec3::new(1.0, 0.0, 0.0));
+
+        let hit = sphere
+            .check_intersection(&ray_inner, Interval::new(0.001, f64::INFINITY))
+            .expect("Ray should hit the sphere");
+
+        // A ray coming from within the sphere should have the correct `front_face` property
+        assert!(!hit.front_face);
+
+        let ray_outer = Ray::new(Vec3::new(-15.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0));
+
+        let hit = sphere
+            .check_intersection(&ray_outer, Interval::new(0.001, f64::INFINITY))
+            .expect("Ray should hit the sphere");
+
+        // A ray comming from outside
+        assert!(hit.front_face);
     }
 }
