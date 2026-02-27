@@ -6,7 +6,7 @@ use super::vector::{Point3, Vec3};
 use crate::Material;
 
 pub struct HitInfo {
-    pub location: Point3,
+    pub point: Point3,
     pub normal: Vec3,
     pub t: f64,
     pub front_face: bool,
@@ -58,7 +58,7 @@ impl Hittable for Sphere {
         };
 
         return Some(HitInfo {
-            location: point,
+            point,
             normal,
             t: root,
             front_face,
@@ -172,7 +172,7 @@ mod tests {
             .expect("Ray should hit sphere");
 
         // Hit point should be at z = -1
-        assert!((hit.location - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
+        assert!((hit.point - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
 
         // Normal should point straight back toward camera
         assert!((hit.normal - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
@@ -195,7 +195,7 @@ mod tests {
             .expect("Ray should hit sphere");
 
         // Normal must match radial direction
-        let expected = (hit.location - Vec3::ZERO).normalized();
+        let expected = (hit.point - Vec3::ZERO).normalized();
 
         assert!((hit.normal - expected).length() < 1e-6);
     }

@@ -46,7 +46,7 @@ impl Material for Lambertian {
             if d.is_near_zero() { hit.normal } else { d }
         };
 
-        let scattered = Ray::new(hit.location, scatter_direction);
+        let scattered = Ray::new(hit.point, scatter_direction);
         // We attenuate by the albedo
         Some((self.albedo, scattered))
     }
@@ -84,7 +84,7 @@ impl Material for Metal {
     fn scatter(&self, ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
         let reflected =
             ray.direction.reflect(hit.normal).normalized() + (self.fuzz * sampler.unit_vector());
-        let scattered = Ray::new(hit.location, reflected);
+        let scattered = Ray::new(hit.point, reflected);
 
         // Absorb the ray we scatter below the surface
         if scattered.direction.dot(hit.normal) > 0.0 {
