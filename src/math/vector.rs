@@ -46,8 +46,8 @@ impl Vec3 {
         return Vec3::new(self.x / len, self.y / len, self.z / len);
     }
 
-    pub fn reflect(self, normal: Self) -> Self {
-        return self - 2.0 * self.dot(normal) * normal;
+    pub fn reflect(self, normal: Normal3) -> Self {
+        return self - 2.0 * self.dot(normal.0) * normal.0;
     }
 
     pub fn is_near_zero(self) -> bool {
@@ -174,6 +174,50 @@ impl ops::Sub<Vec3> for Point3 {
 /*
 * Normal
 */
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct Normal3(pub Vec3);
+
+impl Normal3 {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Normal3(Vec3::new(x, y, z))
+    }
+}
+
+impl ops::Deref for Normal3 {
+    type Target = Vec3;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ops::Mul<Normal3> for f64 {
+    type Output = Normal3;
+    fn mul(self, rhs: Normal3) -> Self::Output {
+        Normal3(Vec3 {
+            x: rhs.x * self,
+            y: rhs.y * self,
+            z: rhs.z * self,
+        })
+    }
+}
+
+impl ops::Div<f64> for Normal3 {
+    type Output = Normal3;
+    fn div(self, rhs: f64) -> Self::Output {
+        Normal3(Vec3 {
+            x: self.x / rhs,
+            y: self.y / rhs,
+            z: self.z / rhs,
+        })
+    }
+}
+
+impl ops::Neg for Normal3 {
+    type Output = Normal3;
+    fn neg(self) -> Self::Output {
+        Normal3(-self.0)
+    }
+}
 
 #[cfg(test)]
 pub mod tests {

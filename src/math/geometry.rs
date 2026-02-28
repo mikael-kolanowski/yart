@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use super::interval::Interval;
 use super::ray::Ray;
-use super::vector::{Point3, Vec3};
+use super::vector::{Normal3, Point3};
 use crate::Material;
 
 pub struct HitInfo {
     pub point: Point3,
-    pub normal: Vec3,
+    pub normal: Normal3,
     pub t: f64,
     pub front_face: bool,
     pub material: Arc<dyn Material>,
@@ -45,11 +45,11 @@ impl Hittable for Sphere {
         }
 
         let point = ray.at(root);
-        let outward_normal = (point - self.center) / self.radius;
+        let outward_normal = Normal3((point - self.center) / self.radius);
         let mut normal = outward_normal;
 
         let front_face = {
-            if ray.direction.dot(outward_normal) > 0.0 {
+            if ray.direction.dot(outward_normal.0) > 0.0 {
                 normal = -outward_normal;
                 false
             } else {
@@ -71,6 +71,7 @@ impl Hittable for Sphere {
 mod tests {
     use core::f64;
 
+    use crate::math::Vec3;
     use crate::rendering::material::DummyMaterial;
 
     use super::*;
@@ -175,7 +176,7 @@ mod tests {
         assert!((hit.point - Point3::new(0.0, 0.0, -1.0)).length() < 1e-6);
 
         // Normal should point straight back toward camera
-        assert!((hit.normal - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
+        assert!((hit.normal.0 - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
 
         // Normal must be unit length
         assert!((hit.normal.length() - 1.0).abs() < 1e-6);
@@ -197,7 +198,7 @@ mod tests {
         // Normal must match radial direction
         let expected = (hit.point - Point3::ORIGIN).normalized();
 
-        assert!((hit.normal - expected).length() < 1e-6);
+        assert!((hit.normal.0 - expected).length() < 1e-6);
     }
 
     #[test]
