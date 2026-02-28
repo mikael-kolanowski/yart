@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::color::Color;
 use crate::math::interval::Interval;
-use crate::math::{HitInfo, Point3, Ray, Sphere};
+use crate::math::{HitInfo, Point3, Ray, Sphere, Triangle};
 use crate::rendering::material::{DummyMaterial, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
 use crate::{math::Hittable, rendering::Material};
@@ -60,6 +60,23 @@ impl World {
                     objects.push(Box::new(Sphere {
                         center: Point3(*position),
                         radius: *radius,
+                        material: material.clone(),
+                    }));
+                }
+                ObjectConfig::Triangle {
+                    p1,
+                    p2,
+                    p3,
+                    material,
+                } => {
+                    let material = material_map.get(material).unwrap_or_else(|| {
+                        eprintln!("Warning: material {material} could not be resolved");
+                        &fallback_material
+                    });
+                    objects.push(Box::new(Triangle {
+                        p1: *p1,
+                        p2: *p2,
+                        p3: *p3,
                         material: material.clone(),
                     }));
                 }

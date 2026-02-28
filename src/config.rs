@@ -87,6 +87,16 @@ pub enum ObjectConfig {
         radius: f64,
         material: String,
     },
+    #[serde(rename = "triangle")]
+    Triangle {
+        #[serde(deserialize_with = "deserialize_point3")]
+        p1: Point3,
+        #[serde(deserialize_with = "deserialize_point3")]
+        p2: Point3,
+        #[serde(deserialize_with = "deserialize_point3")]
+        p3: Point3,
+        material: String,
+    },
 }
 
 fn deserialize_aspect_ratio<'de, D>(deserializer: D) -> Result<f64, D::Error>
