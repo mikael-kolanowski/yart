@@ -155,6 +155,15 @@ mod tests {
         }
     }
 
+    fn tri() -> Triangle {
+        Triangle {
+            p1: Point3::new(0.0, 0.0, 0.0),
+            p2: Point3::new(1.0, 0.0, 0.0),
+            p3: Point3::new(0.0, 1.0, 0.0),
+            material: Arc::new(DummyMaterial),
+        }
+    }
+
     #[test]
     fn sphere_direct_hit() {
         let sphere = unit_sphere(Point3::new(0.0, 0.0, -5.0));
@@ -285,5 +294,91 @@ mod tests {
 
         // A ray comming from outside
         assert!(hit.front_face);
+    }
+
+    #[test]
+    fn ray_hits_triangle_center() {
+        let ray = Ray::new(Point3::new(0.25, 0.25, 1.0), Vec3::new(0.0, 0.0, -1.0));
+
+        let triangle = tri();
+
+        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+
+        assert!(hit.is_some());
+
+        let rec = hit.unwrap();
+
+        assert!((rec.t - 1.0).abs() < 1e-6);
+        assert!((rec.point - Point3::new(0.25, 0.25, 0.0)).is_near_zero());
+    }
+
+    #[test]
+    fn ray_misses_triangle() {
+        let ray = Ray::new(Point3::new(1.1, 1.1, 1.0), Vec3::new(0.0, 0.0, -1.0));
+
+        let triangle = tri();
+
+        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+
+        assert!(hit.is_none())
+    }
+
+    #[test]
+    fn parallel_ray_does_not_hit_triangle() {
+        let ray = Ray::new(Point3::new(0.25, 0.25, 1.0), Vec3::new(1.0, 0.0, 0.0));
+
+        let triangle = tri();
+
+        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+
+        assert!(hit.is_none())
+    }
+
+    #[test]
+    fn ray_hits_triangle_edge() {
+        let ray = Ray::new(Point3::new(0.5, 0.0, 1.0), Vec3::new(0.0, 0.0, -1.0));
+
+        let triangle = tri();
+
+        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+
+        assert!(hit.is_some())
+    }
+
+    #[test]
+    fn ray_hits_triangle_vertex() {
+        let ray = Ray::new(Point3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 0.0, -1.0));
+
+        let triangle = tri();
+
+        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+
+        assert!(hit.is_some())
+    }
+
+    #[test]
+    fn triangle_front_face() {
+        let ray = Ray::new(Point3::new(0.25, 0.25, 1.0), Vec3::new(0.0, 0.0, -1.0));
+
+        let triangle = tri();
+
+        let rec = triangle
+            .check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY))
+            .unwrap();
+
+        assert!(rec.front_face);
+    }
+
+    #[test]
+    fn triangle_back_face() {
+        let ray = Ray::new(Point3::new(0.25, 0.25, -1.0), Vec3::new(0.0, 0.0, 1.0));
+
+        let triangle = tri();
+
+        let rec = triangle
+            .check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY))
+            .unwrap();
+
+        assert!(!rec.front_face);
     }
 }
