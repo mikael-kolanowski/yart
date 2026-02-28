@@ -67,6 +67,69 @@ impl Hittable for Sphere {
     }
 }
 
+pub struct Triangle {
+    pub p1: Point3,
+    pub p2: Point3,
+    pub p3: Point3,
+    pub material: Arc<dyn Material>,
+}
+
+impl Hittable for Triangle {
+    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+        let edge1 = self.p2 - self.p1;
+        let edge2 = self.p3 - self.p1;
+
+        let h = ray.direction.cross(edge2);
+        let a = edge1.dot(h);
+
+        // Ray parallel to the triangle
+        if a.abs() < 1e-8 {
+            return None;
+        }
+
+        let f = 1.0 / a;
+        let s = ray.origin - self.p1;
+
+        let u = f * s.dot(h);
+        if !(0.0..1.0).contains(&u) {
+            return None;
+        }
+
+        let q = s.cross(edge1);
+
+        let v = f * ray.direction.dot(q);
+        if v < 0.0 || u + v > 1.0 {
+            return None;
+        }
+
+        let t = f * edge2.dot(q);
+
+        if !ray_t.surrounds(t) {
+            return None;
+        }
+
+        let point = ray.at(t);
+        let outward_normal = Normal3(edge1.cross(edge2).normalized());
+
+        let mut normal = outward_normal;
+        let front_face = {
+            if outward_normal.dot(ray.direction) < 0.0 {
+                true
+            } else {
+                normal = -outward_normal;
+                false
+            }
+        };
+        return Some(HitInfo {
+            point,
+            normal: normal,
+            t,
+            material: self.material.clone(),
+            front_face,
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::f64;
