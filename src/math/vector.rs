@@ -2,7 +2,11 @@ use std::ops;
 
 use super::Lerp;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+/*
+* Vector
+*/
+
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,
@@ -54,14 +58,6 @@ impl Vec3 {
     pub fn is_orthogonal_to(self, other: Self) -> bool {
         let h = 1e-8;
         self.dot(other) < h
-    }
-
-    pub fn to_point(&self) -> Point3 {
-        return Point3 {
-            x: self.x,
-            y: self.y,
-            z: self.z,
-        };
     }
 }
 
@@ -137,7 +133,47 @@ impl ops::Neg for Vec3 {
     }
 }
 
-pub type Point3 = Vec3;
+/*
+* Point
+*/
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct Point3(pub Vec3);
+
+impl Point3 {
+    pub const ORIGIN: Self = Self::new(0.0, 0.0, 0.0);
+
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
+        Self(Vec3::new(x, y, z))
+    }
+}
+
+impl ops::Add<Vec3> for Point3 {
+    type Output = Point3;
+
+    fn add(self, rhs: Vec3) -> Point3 {
+        Point3(self.0 + rhs)
+    }
+}
+
+impl ops::Sub<Point3> for Point3 {
+    type Output = Vec3;
+
+    fn sub(self, rhs: Point3) -> Vec3 {
+        self.0 - rhs.0
+    }
+}
+
+impl ops::Sub<Vec3> for Point3 {
+    type Output = Point3;
+
+    fn sub(self, rhs: Vec3) -> Point3 {
+        Point3(self.0 - rhs)
+    }
+}
+
+/*
+* Normal
+*/
 
 #[cfg(test)]
 pub mod tests {

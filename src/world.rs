@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::color::Color;
 use crate::math::interval::Interval;
-use crate::math::{HitInfo, Ray, Sphere};
+use crate::math::{HitInfo, Point3, Ray, Sphere};
 use crate::rendering::material::{DummyMaterial, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
 use crate::{math::Hittable, rendering::Material};
@@ -58,7 +58,7 @@ impl World {
                         &fallback_material
                     });
                     objects.push(Box::new(Sphere {
-                        center: *position,
+                        center: Point3(*position),
                         radius: *radius,
                         material: material.clone(),
                     }));

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use serde::de::{self, Deserializer};
 
-use crate::math::Vec3;
+use crate::math::{Point3, Vec3};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -20,10 +20,10 @@ pub struct CameraConfig {
     #[serde(deserialize_with = "deserialize_aspect_ratio")]
     pub aspect_ratio: f64,
     pub field_of_view: u32,
-    #[serde(deserialize_with = "deserialize_vec3")]
-    pub position: Vec3,
-    #[serde(deserialize_with = "deserialize_vec3")]
-    pub look_at: Vec3,
+    #[serde(deserialize_with = "deserialize_point3")]
+    pub position: Point3,
+    #[serde(deserialize_with = "deserialize_point3")]
+    pub look_at: Point3,
 }
 
 #[derive(Debug, Deserialize)]
@@ -140,4 +140,11 @@ where
 
     let v = Vec3::new(x, y, z);
     Ok(v)
+}
+
+fn deserialize_point3<'de, D>(deserializer: D) -> Result<Point3, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserialize_vec3(deserializer).map(|v| Point3(v))
 }

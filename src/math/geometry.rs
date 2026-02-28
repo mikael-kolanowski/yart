@@ -18,7 +18,7 @@ pub trait Hittable {
 }
 
 pub struct Sphere {
-    pub center: Vec3,
+    pub center: Point3,
     pub radius: f64,
     pub material: Arc<dyn Material>,
 }
@@ -75,7 +75,7 @@ mod tests {
 
     use super::*;
 
-    fn unit_sphere(center: Vec3) -> Sphere {
+    fn unit_sphere(center: Point3) -> Sphere {
         Sphere {
             center,
             radius: 1.0,
@@ -83,7 +83,7 @@ mod tests {
         }
     }
 
-    fn sphere(center: Vec3, radius: f64) -> Sphere {
+    fn sphere(center: Point3, radius: f64) -> Sphere {
         Sphere {
             center,
             radius,
@@ -93,9 +93,9 @@ mod tests {
 
     #[test]
     fn sphere_direct_hit() {
-        let sphere = unit_sphere(Vec3::new(0.0, 0.0, -5.0));
+        let sphere = unit_sphere(Point3::new(0.0, 0.0, -5.0));
 
-        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+        let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
         let hit = sphere
             .check_intersection(&ray, Interval::new(0.0, 1000.0))
@@ -106,8 +106,8 @@ mod tests {
 
     #[test]
     fn sphere_miss() {
-        let sphere = unit_sphere(Vec3::new(0.0, 0.0, -5.0));
-        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 1.0, 0.0));
+        let sphere = unit_sphere(Point3::new(0.0, 0.0, -5.0));
+        let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 1.0, 0.0));
 
         let hit = sphere.check_intersection(&ray, Interval::new(0.0, 1000.0));
 
@@ -116,8 +116,8 @@ mod tests {
 
     #[test]
     fn sphere_tangent_hit() {
-        let sphere = unit_sphere(Vec3::new(0.0, 1.0, -5.0));
-        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+        let sphere = unit_sphere(Point3::new(0.0, 1.0, -5.0));
+        let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
         let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
         assert!(hit.is_some());
@@ -129,8 +129,8 @@ mod tests {
 
     #[test]
     fn ray_origin_inside_sphere() {
-        let sphere = unit_sphere(Vec3::ZERO);
-        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, 1.0));
+        let sphere = unit_sphere(Point3::ORIGIN);
+        let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, 1.0));
 
         let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
         assert!(hit.is_some());
@@ -142,8 +142,8 @@ mod tests {
 
     #[test]
     fn sphere_behind_ray() {
-        let sphere = unit_sphere(Vec3::new(0.0, 0.0, 5.0));
-        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+        let sphere = unit_sphere(Point3::new(0.0, 0.0, 5.0));
+        let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
         let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
         assert!(hit.is_none());
@@ -151,9 +151,9 @@ mod tests {
 
     #[test]
     fn sphere_interval_rejection() {
-        let sphere = unit_sphere(Vec3::new(0.0, 0.0, -5.0));
+        let sphere = unit_sphere(Point3::new(0.0, 0.0, -5.0));
 
-        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0));
+        let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
         // Reject valid hit by shrinking interval
         let hit = sphere.check_intersection(&ray, Interval::new(0.001, 3.0));
@@ -163,16 +163,16 @@ mod tests {
 
     #[test]
     fn hit_center_front_face() {
-        let sphere = unit_sphere(Vec3::ZERO);
+        let sphere = unit_sphere(Point3::ORIGIN);
 
-        let ray = Ray::new(Vec3::new(0.0, 0.0, -3.0), Vec3::new(0.0, 0.0, 1.0));
+        let ray = Ray::new(Point3::new(0.0, 0.0, -3.0), Vec3::new(0.0, 0.0, 1.0));
 
         let hit = sphere
             .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
             .expect("Ray should hit sphere");
 
         // Hit point should be at z = -1
-        assert!((hit.point - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
+        assert!((hit.point - Point3::new(0.0, 0.0, -1.0)).length() < 1e-6);
 
         // Normal should point straight back toward camera
         assert!((hit.normal - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-6);
@@ -183,10 +183,10 @@ mod tests {
 
     #[test]
     fn hit_offset_point() {
-        let sphere = unit_sphere(Vec3::ZERO);
+        let sphere = unit_sphere(Point3::ORIGIN);
 
         let ray = Ray::new(
-            Vec3::new(0.0, 0.0, -3.0),
+            Point3::new(0.0, 0.0, -3.0),
             Vec3::new(0.0, 0.2, 1.0).normalized(),
         );
 
@@ -195,16 +195,16 @@ mod tests {
             .expect("Ray should hit sphere");
 
         // Normal must match radial direction
-        let expected = (hit.point - Vec3::ZERO).normalized();
+        let expected = (hit.point - Point3::ORIGIN).normalized();
 
         assert!((hit.normal - expected).length() < 1e-6);
     }
 
     #[test]
     fn sphere_front_face() {
-        let sphere = sphere(Vec3::ZERO, 10.0);
+        let sphere = sphere(Point3::ORIGIN, 10.0);
 
-        let ray_inner = Ray::new(Vec3::ZERO, Vec3::new(1.0, 0.0, 0.0));
+        let ray_inner = Ray::new(Point3::ORIGIN, Vec3::new(1.0, 0.0, 0.0));
 
         let hit = sphere
             .check_intersection(&ray_inner, Interval::new(0.001, f64::INFINITY))
@@ -213,7 +213,7 @@ mod tests {
         // A ray coming from within the sphere should have the correct `front_face` property
         assert!(!hit.front_face);
 
-        let ray_outer = Ray::new(Vec3::new(-15.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0));
+        let ray_outer = Ray::new(Point3::new(-15.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0));
 
         let hit = sphere
             .check_intersection(&ray_outer, Interval::new(0.001, f64::INFINITY))
