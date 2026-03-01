@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::path::PathBuf;
 use std::{collections::HashMap, sync::Arc};
 
 use log::warn;
@@ -5,6 +7,7 @@ use log::warn;
 use crate::color::Color;
 use crate::math::interval::Interval;
 use crate::math::{HitInfo, Point3, Ray, Sphere, Triangle};
+use crate::mesh::Mesh;
 use crate::rendering::material::{DummyMaterial, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
 use crate::{math::Hittable, rendering::Material};
@@ -73,6 +76,18 @@ impl World {
                         material: material.clone(),
                     }));
                 }
+                ObjectConfig::Mesh { path, material } => {
+                    let material = material_map.get(material).unwrap_or_else(|| {
+                        eprintln!("Warning: material {material} could not be resolved");
+                        &fallback_material
+                    });
+                    match load_mesh_from_path(&path, material.clone()) {
+                        Err(message) => {
+                            eprintln!("{message}");
+                        }
+                        Ok(mesh) => objects.push(Box::new(mesh)),
+                    }
+                }
             }
         }
 
@@ -84,6 +99,12 @@ impl World {
     fn add(&mut self, object: Box<dyn Hittable>) {
         self.objects.push(object);
     }
+}
+
+fn load_mesh_from_path(path: &PathBuf, material: Arc<dyn Material>) -> Result<Mesh, &'static str> {
+    let mut file = File::open(path).map_err(|_| "Warning: could not open file")?;
+    let mesh = Mesh::read_from_obj(&mut file, material.clone())?;
+    Ok(mesh)
 }
 
 fn build_skybox(config: &SkyConfig) -> Box<dyn SkyBox> {
