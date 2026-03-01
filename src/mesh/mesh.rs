@@ -2,7 +2,7 @@ use std::{io::Read, sync::Arc};
 
 use crate::{
     Material,
-    math::{Point3, Triangle},
+    math::{Hittable, Point3, Triangle, interval::Interval},
 };
 
 pub struct Mesh {
@@ -71,9 +71,26 @@ impl Mesh {
             }
         }
 
-        Ok(Self {
-            triangles,
-        })
+        eprintln!("Loaded mesh: {} triangles", triangles.len());
+        Ok(Self { triangles })
+    }
+}
+
+impl Hittable for Mesh {
+    fn check_intersection(
+        &self,
+        ray: &crate::math::Ray,
+        ray_t: crate::math::interval::Interval,
+    ) -> Option<crate::math::HitInfo> {
+        let mut closest = ray_t.max;
+        let mut hit_anything = None;
+        for triangle in &self.triangles {
+            if let Some(hit) = triangle.check_intersection(ray, Interval::new(ray_t.min, closest)) {
+                closest = hit.t;
+                hit_anything = Some(hit);
+            }
+        }
+        hit_anything
     }
 }
 
@@ -100,14 +117,13 @@ mod tests {
 
     #[test]
     fn load_obj_single_triangle() {
-
         // first line of the stanford bunny
         let source = "# Comments should be skipped
                      v -3.4101800e-003 1.3031957e-001 2.1754370e-002
                      v -8.1719160e-002 1.5250145e-001 2.9656090e-002
                      v -3.0543480e-002 1.2477885e-001 1.0983400e-003
                      f 1 2 3";
-        
+
         let mut cursor = std::io::Cursor::new(source);
 
         let mesh = Mesh::read_from_obj(&mut cursor, material()).unwrap();
