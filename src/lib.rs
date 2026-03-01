@@ -1,6 +1,7 @@
 pub mod color;
 pub mod config;
 pub mod math;
+pub mod mesh;
 pub mod progressbar;
 pub mod rendering;
 pub mod world;
