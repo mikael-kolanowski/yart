@@ -3,4 +3,4 @@
 .DS_Store
 
 *.ppm
-!golden_images/*
+!golden_images/images/*

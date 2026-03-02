@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::{env, fs, process};
 
+use yart::load_scene_from_config;
+
 fn read_config(path: &str) -> Result<yart::Config, Box<dyn std::error::Error>> {
     let contents = fs::read_to_string(path)?;
     let config: yart::Config = toml::from_str(&contents)?;
@@ -24,24 +26,10 @@ fn main() {
         process::exit(1);
     });
 
-    let world = yart::World::from_config(&config);
-
     let mut rng = rand::rng();
-
-    let camera = yart::Camera::new(
-        config.camera.aspect_ratio,
-        config.image.width,
-        config.camera.field_of_view,
-        config.camera.position,
-        config.camera.look_at,
-    );
-
     let mut sampler = yart::rendering::sampler::RandomSampler::new(&mut rng);
 
-    let renderer = yart::Renderer::new(
-        config.renderer.samples_per_pixel,
-        config.renderer.max_bounces,
-    );
+    let (camera, world, renderer) = load_scene_from_config(&config);
 
     let image = renderer.render(&world, &camera, &mut sampler, true);
     let mut output_file = File::create(config.image.output).expect("Unable to open output file");

@@ -1,0 +1,52 @@
+[image]
+width = 32
+output = "ignore"
+
+[renderer]
+max_bounces = 32
+samples_per_pixel = 32 
+
+[camera]
+position = "0, 0, 0"
+look_at = "0, 0, -1"
+field_of_view = 90
+aspect_ratio = "1:1"
+
+[sky]
+type = "linear-gradient"
+from = "1, 1, 1"
+to = "0.5, 0.7, 1.0"
+
+[[materials]]
+type = "lambertian"
+albedo = "1, 0, 0"
+name = "red"
+
+[[materials]]
+type = "lambertian"
+albedo = "0.8, 0.8, 0.0"
+name = "green"
+
+[[materials]]
+type = "metal"
+albedo = "1, 1, 1"
+fuzz = 0.4
+name = "metal"
+
+[[objects]]
+type = "sphere"
+position = "0.5, 0, -1"
+radius = 0.5
+material = "red"
+
+[[objects]]
+type = "sphere"
+position = "-0.5, 0, -1"
+radius = 0.5
+material = "metal"
+
+[[objects]]
+type = "sphere"
+position = "0, -100.5, -1"
+radius = 100.0
+material = "green"
