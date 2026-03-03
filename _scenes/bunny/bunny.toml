@@ -35,5 +35,5 @@ material = "ground"
 
 [[objects]]
 type = "mesh"
-path = "./bunny.obj"
+path = "bunny.obj"
 material = "matte"

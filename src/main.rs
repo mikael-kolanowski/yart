@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::path::Path;
 use std::{env, fs, process};
 
 use log::error;
@@ -32,7 +33,8 @@ fn main() {
     let mut rng = rand::rng();
     let mut sampler = yart::rendering::sampler::RandomSampler::new(&mut rng);
 
-    let (camera, world, renderer) = load_scene_from_config(&config);
+    let asset_base_path = Path::new(&config_path).parent().unwrap();
+    let (camera, world, renderer) = load_scene_from_config(&config, &asset_base_path);
 
     let image = renderer.render(&world, &camera, &mut sampler, true);
     let mut output_file = File::create(&config.image.output).expect("Unable to open output file");
