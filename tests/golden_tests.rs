@@ -36,3 +36,12 @@ fn matte_and_metal_sphere() {
 
     golden_test("two_spheres", &mut sampler)
 }
+
+#[test]
+fn bunny() {
+    let rng = SmallRng::seed_from_u64(1337);
+    let mut sampler = RandomSampler::new(rng);
+
+    golden_test("bunny", &mut sampler)
+}
+
