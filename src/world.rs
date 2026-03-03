@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::path::Path;
 use std::path::PathBuf;
 use std::{collections::HashMap, sync::Arc};
 
@@ -21,7 +22,7 @@ pub struct World {
 }
 
 impl World {
-    pub fn from_config(config: &Config) -> Self {
+    pub fn from_config(config: &Config, asset_base_path: &Path) -> Self {
         let mut material_map: HashMap<String, Arc<dyn Material>> = HashMap::new();
         let fallback_material: Arc<dyn Material> = Arc::new(DummyMaterial {});
         for material_config in &config.materials {
@@ -81,7 +82,8 @@ impl World {
                         eprintln!("Warning: material {material} could not be resolved");
                         &fallback_material
                     });
-                    match load_mesh_from_path(&path, material.clone()) {
+                    let asset_path = resolve_relative_path(asset_base_path, path);
+                    match load_mesh_from_path(&asset_path, material.clone()) {
                         Err(message) => {
                             eprintln!("{message}");
                         }
@@ -101,8 +103,17 @@ impl World {
     }
 }
 
-fn load_mesh_from_path(path: &PathBuf, material: Arc<dyn Material>) -> Result<Mesh, &'static str> {
-    let mut file = File::open(path).map_err(|_| "Warning: could not open file")?;
+fn resolve_relative_path(base: &Path, path: &PathBuf) -> PathBuf {
+    if path.is_absolute() {
+        path.clone()
+    } else {
+        base.join(path)
+    }
+}
+
+fn load_mesh_from_path(path: &PathBuf, material: Arc<dyn Material>) -> Result<Mesh, String> {
+    let mut file =
+        File::open(&path).map_err(|_| format!("Warning: could not open file {:?}", path))?;
     let mesh = Mesh::read_from_obj(&mut file, material.clone())?;
     Ok(mesh)
 }
