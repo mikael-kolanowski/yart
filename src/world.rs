@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use log::warn;
+
 use crate::color::Color;
 use crate::math::interval::Interval;
 use crate::math::{HitInfo, Point3, Ray, Sphere, Triangle};
@@ -54,7 +56,7 @@ impl World {
                     material,
                 } => {
                     let material = material_map.get(material).unwrap_or_else(|| {
-                        eprintln!("Warning: material {material} could not be resolved");
+                        warn!("material '{material}' could not be resolved");
                         &fallback_material
                     });
                     objects.push(Box::new(Sphere {
@@ -70,7 +72,7 @@ impl World {
                     material,
                 } => {
                     let material = material_map.get(material).unwrap_or_else(|| {
-                        eprintln!("Warning: material {material} could not be resolved");
+                        warn!("material '{material}' could not be resolved");
                         &fallback_material
                     });
                     objects.push(Box::new(Triangle {

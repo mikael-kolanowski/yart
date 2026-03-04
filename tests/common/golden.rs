@@ -1,3 +1,4 @@
+use log::error;
 use std::fs;
 use std::{fs::File, iter::zip, path::PathBuf};
 
@@ -22,7 +23,7 @@ fn load_golden_scene(name: &str) -> (Camera, World, Renderer) {
     let contents = fs::read_to_string(config_path).expect("could not load golden scene");
     // let config: yart::Config = toml::from_str(&contents).expect("could not parse config file");
     let config: yart::Config = toml::from_str(&contents).unwrap_or_else(|err| {
-        eprintln!("Could not read config: {err}");
+        error!("could not read config: {err}");
         panic!();
     });
 

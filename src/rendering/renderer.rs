@@ -1,3 +1,5 @@
+use log::info;
+
 use crate::World;
 use crate::color::Color;
 use crate::image::Image;
@@ -53,8 +55,8 @@ impl Renderer {
         sampler: &mut dyn Sampler,
         show_progress: bool,
     ) -> Image {
-        eprintln!(
-            "Output image dimensions: {}x{}",
+        info!(
+            "output image dimensions: {}x{}",
             camera.image_width, camera.image_height
         );
 
@@ -82,8 +84,8 @@ impl Renderer {
         }
         let rendering_finished = Instant::now();
         progress_bar.finish();
-        eprintln!(
-            "Image rendered in {} ms",
+        info!(
+            "image rendered in {} ms",
             (rendering_finished - rendering_started).as_millis()
         );
         return image;
