@@ -97,6 +97,8 @@ pub enum ObjectConfig {
         p3: Point3,
         material: String,
     },
+    #[serde(rename = "mesh")]
+    Mesh { path: PathBuf, material: String },
 }
 
 fn deserialize_aspect_ratio<'de, D>(deserializer: D) -> Result<f64, D::Error>

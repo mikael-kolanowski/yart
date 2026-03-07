@@ -67,6 +67,7 @@ impl Hittable for Sphere {
     }
 }
 
+//#[derive(Clone)]
 pub struct Triangle {
     pub p1: Point3,
     pub p2: Point3,
@@ -82,8 +83,9 @@ impl Hittable for Triangle {
         let h = ray.direction.cross(edge2);
         let a = edge1.dot(h);
 
+        let eps = 1e-8;
         // Ray parallel to the triangle
-        if a.abs() < 1e-8 {
+        if a.abs() < eps {
             return None;
         }
 
@@ -91,14 +93,14 @@ impl Hittable for Triangle {
         let s = ray.origin - self.p1;
 
         let u = f * s.dot(h);
-        if !(0.0..1.0).contains(&u) {
+        if u < -eps || u > 1.0 + eps {
             return None;
         }
 
         let q = s.cross(edge1);
 
         let v = f * ray.direction.dot(q);
-        if v < 0.0 || u + v > 1.0 {
+        if v < -eps || u + v > 1.0 + eps {
             return None;
         }
 

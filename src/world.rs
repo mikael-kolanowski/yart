@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::path::Path;
+use std::path::PathBuf;
 use std::{collections::HashMap, sync::Arc};
 
 use log::warn;
@@ -5,6 +8,7 @@ use log::warn;
 use crate::color::Color;
 use crate::math::interval::Interval;
 use crate::math::{HitInfo, Point3, Ray, Sphere, Triangle};
+use crate::mesh::Mesh;
 use crate::rendering::material::{DummyMaterial, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
 use crate::{math::Hittable, rendering::Material};
@@ -18,7 +22,7 @@ pub struct World {
 }
 
 impl World {
-    pub fn from_config(config: &Config) -> Self {
+    pub fn from_config(config: &Config, asset_base_path: &Path) -> Self {
         let mut material_map: HashMap<String, Arc<dyn Material>> = HashMap::new();
         let fallback_material: Arc<dyn Material> = Arc::new(DummyMaterial {});
         for material_config in &config.materials {
@@ -73,6 +77,19 @@ impl World {
                         material: material.clone(),
                     }));
                 }
+                ObjectConfig::Mesh { path, material } => {
+                    let material = material_map.get(material).unwrap_or_else(|| {
+                        eprintln!("Warning: material {material} could not be resolved");
+                        &fallback_material
+                    });
+                    let asset_path = resolve_relative_path(asset_base_path, path);
+                    match load_mesh_from_path(&asset_path, material.clone()) {
+                        Err(message) => {
+                            eprintln!("{message}");
+                        }
+                        Ok(mesh) => objects.push(Box::new(mesh)),
+                    }
+                }
             }
         }
 
@@ -84,6 +101,21 @@ impl World {
     fn add(&mut self, object: Box<dyn Hittable>) {
         self.objects.push(object);
     }
+}
+
+fn resolve_relative_path(base: &Path, path: &PathBuf) -> PathBuf {
+    if path.is_absolute() {
+        path.clone()
+    } else {
+        base.join(path)
+    }
+}
+
+fn load_mesh_from_path(path: &PathBuf, material: Arc<dyn Material>) -> Result<Mesh, String> {
+    let mut file =
+        File::open(&path).map_err(|_| format!("Warning: could not open file {:?}", path))?;
+    let mesh = Mesh::read_from_obj(&mut file, material.clone())?;
+    Ok(mesh)
 }
 
 fn build_skybox(config: &SkyConfig) -> Box<dyn SkyBox> {
