@@ -24,8 +24,7 @@ pub fn load_scene_from_config(
         config.camera.look_at,
     );
 
-    let world = World::from_config(&config, asset_base_path);
-
+    let world = World::from_config(config, asset_base_path);
     let renderer = Renderer::new(
         config.renderer.samples_per_pixel,
         config.renderer.max_bounces,

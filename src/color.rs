@@ -22,7 +22,7 @@ impl Color {
     };
 
     pub fn new(r: f64, g: f64, b: f64) -> Self {
-        Self { r: r, g: g, b: b }
+        Self { r, g, b }
     }
 
     pub fn map(&self, f: fn(f64) -> f64) -> Self {

@@ -43,11 +43,11 @@ impl Vec3 {
 
     pub fn normalized(self) -> Self {
         let len = self.length();
-        return Vec3::new(self.x / len, self.y / len, self.z / len);
+        Vec3::new(self.x / len, self.y / len, self.z / len)
     }
 
     pub fn reflect(self, normal: Normal3) -> Self {
-        return self - 2.0 * self.dot(normal.0) * normal.0;
+        self - 2.0 * self.dot(normal.0) * normal.0
     }
 
     pub fn is_near_zero(self) -> bool {
@@ -70,11 +70,11 @@ impl Lerp<Vec3> for Vec3 {
 impl ops::Add<Vec3> for Vec3 {
     type Output = Vec3;
     fn add(self, rhs: Vec3) -> Vec3 {
-        return Vec3 {
+        Vec3 {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
             z: self.z + rhs.z,
-        };
+        }
     }
 }
 

@@ -31,7 +31,7 @@ impl Renderer {
         world: &World,
         sampler: &mut dyn Sampler,
     ) -> Color {
-        if max_bounces <= 0 {
+        if max_bounces == 0 {
             return Color::BLACK;
         }
         if let Some(hit_info) = world.check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
@@ -88,7 +88,7 @@ impl Renderer {
             "image rendered in {} ms",
             (rendering_finished - rendering_started).as_millis()
         );
-        return image;
+        image
     }
 }
 
@@ -106,7 +106,7 @@ mod tests {
 
         let camera = Camera::new(1.0, 32, 90, Point3::ORIGIN, Point3::new(0.0, -1.0, 0.0));
 
-        let world = World::new();
+        let world = World::default();
 
         let renderer = Renderer::new(1, 1);
 

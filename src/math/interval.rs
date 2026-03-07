@@ -15,7 +15,7 @@ impl Interval {
     };
 
     pub fn new(min: f64, max: f64) -> Self {
-        Self { min: min, max: max }
+        Self { min, max }
     }
 
     pub fn size(self) -> f64 {
@@ -39,6 +39,6 @@ impl Interval {
             return self.max;
         }
 
-        return x;
+        x
     }
 }

@@ -57,13 +57,13 @@ impl Hittable for Sphere {
             }
         };
 
-        return Some(HitInfo {
+        Some(HitInfo {
             point,
             normal,
             t: root,
             front_face,
             material: self.material.clone(),
-        });
+        })
     }
 }
 
@@ -122,13 +122,13 @@ impl Hittable for Triangle {
                 false
             }
         };
-        return Some(HitInfo {
+        Some(HitInfo {
             point,
-            normal: normal,
+            normal,
             t,
             material: self.material.clone(),
             front_face,
-        });
+        })
     }
 }
 
