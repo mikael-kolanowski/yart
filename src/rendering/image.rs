@@ -32,7 +32,7 @@ fn color_to_ppm(color: &Color) -> String {
     let ig = (256.0 * intensity.clamp(c.g)) as i32;
     let ib = (256.0 * intensity.clamp(c.b)) as i32;
 
-    return format!("{} {} {}", ir, ig, ib);
+    format!("{} {} {}", ir, ig, ib)
 }
 
 fn gamma_to_linear(color: &Color) -> Color {

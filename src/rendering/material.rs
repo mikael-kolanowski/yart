@@ -24,7 +24,7 @@ impl Material for DummyMaterial {
         _hit: &HitInfo,
         _sampler: &mut dyn Sampler,
     ) -> Option<(Color, Ray)> {
-        return None;
+        None
     }
 }
 

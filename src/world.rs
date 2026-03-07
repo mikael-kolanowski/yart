@@ -18,15 +18,6 @@ pub struct World {
 }
 
 impl World {
-    pub fn new() -> Self {
-        Self {
-            objects: Vec::new(),
-            skybox: Box::new(SolidColorSkyBox {
-                color: Color::WHITE,
-            }),
-        }
-    }
-
     pub fn from_config(config: &Config) -> Self {
         let mut material_map: HashMap<String, Arc<dyn Material>> = HashMap::new();
         let fallback_material: Arc<dyn Material> = Arc::new(DummyMaterial {});
@@ -118,6 +109,17 @@ impl Hittable for World {
                 hit_anything = Some(hit)
             }
         }
-        return hit_anything;
+        hit_anything
+    }
+}
+
+impl Default for World {
+    fn default() -> Self {
+        Self {
+            objects: Vec::new(),
+            skybox: Box::new(SolidColorSkyBox {
+                color: Color::WHITE,
+            }),
+        }
     }
 }

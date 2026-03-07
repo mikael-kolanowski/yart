@@ -118,7 +118,7 @@ where
         .map_err(|_| de::Error::custom("invalid height in aspect ratio"))?;
 
     if height == 0.0 {
-        return Err(de::Error::custom("aspect ratio height must not be zero"))?;
+        return Err(de::Error::custom("aspect ratio height must not be zero"));
     }
 
     Ok(width / height)
@@ -135,7 +135,7 @@ where
     if parts.len() != 3 {
         return Err(de::Error::custom(
             "vectors should have exactly three components",
-        ))?;
+        ));
     }
 
     let x: f64 = parts[0]
@@ -156,5 +156,5 @@ fn deserialize_point3<'de, D>(deserializer: D) -> Result<Point3, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserialize_vec3(deserializer).map(|v| Point3(v))
+    deserialize_vec3(deserializer).map(Point3)
 }
