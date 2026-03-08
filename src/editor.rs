@@ -1,3 +1,4 @@
+use log::error;
 use std::path::PathBuf;
 
 use eframe::egui::{self, Context};
@@ -231,7 +232,13 @@ impl eframe::App for Editor {
                         }
                     }
                     if ui.button("Save Scene").clicked() {
-                        println!("TODO: export config");
+                        if let Some(path) = rfd::FileDialog::new().save_file() {
+                            self.config
+                                .save_to_file(path.as_path())
+                                .unwrap_or_else(|err| {
+                                    error!("error while saving config: {err}");
+                                });
+                        }
                     }
                     if ui.button("Quit").clicked() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);

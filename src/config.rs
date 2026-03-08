@@ -193,6 +193,12 @@ impl Config {
         let config: Self = toml::from_str(&contents)?;
         Ok(config)
     }
+
+    pub fn save_to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        let contents = toml::to_string_pretty(&self)?;
+        fs::write(path, contents)?;
+        Ok(())
+    }
 }
 
 impl MaterialConfig {
