@@ -1,3 +1,5 @@
+use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 use serde::Deserialize;
@@ -183,6 +185,14 @@ pub enum ObjectConfig {
     },
     #[serde(rename = "mesh")]
     Mesh { path: PathBuf, material: String },
+}
+
+impl Config {
+    pub fn from_path(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        let contents = fs::read_to_string(path)?;
+        let config: Self = toml::from_str(&contents)?;
+        Ok(config)
+    }
 }
 
 impl MaterialConfig {

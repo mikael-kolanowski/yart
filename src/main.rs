@@ -1,16 +1,10 @@
 use std::fs::File;
 use std::path::Path;
-use std::{env, fs, process};
+use std::{env, process};
 
 use log::error;
 use log::info;
-use yart::load_scene_from_config;
-
-fn read_config(path: &str) -> Result<yart::Config, Box<dyn std::error::Error>> {
-    let contents = fs::read_to_string(path)?;
-    let config: yart::Config = toml::from_str(&contents)?;
-    Ok(config)
-}
+use yart::{Config, load_scene_from_config};
 
 fn print_usage() {
     println!("Usage: ");
@@ -28,7 +22,7 @@ fn main() {
 
         let editor = {
             if let Some(path) = config_path {
-                let config = match read_config(path) {
+                let config = match Config::from_path(Path::new(path)) {
                     Ok(config) => config,
                     Err(err) => {
                         error!("could not read config: {err}");
@@ -51,7 +45,7 @@ fn main() {
         process::exit(1);
     });
 
-    let config = read_config(&config_path).unwrap_or_else(|err| {
+    let config = Config::from_path(&Path::new(config_path)).unwrap_or_else(|err| {
         error!("could not read config: {err}");
         process::exit(1);
     });
