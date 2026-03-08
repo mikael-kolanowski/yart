@@ -15,11 +15,37 @@ fn read_config(path: &str) -> Result<yart::Config, Box<dyn std::error::Error>> {
 fn print_usage() {
     println!("Usage: ");
     println!("yart <config.toml>");
+    println!("yart --editor [config.toml]");
 }
 
 fn main() {
     colog::init();
-    let config_path = env::args().nth(1).unwrap_or_else(|| {
+
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() > 1 && args[1] == "--editor" {
+        let config_path = args.get(2).map(|s| s.as_str());
+
+        let editor = {
+            if let Some(path) = config_path {
+                let config = match read_config(path) {
+                    Ok(config) => config,
+                    Err(err) => {
+                        error!("could not read config: {err}");
+                        process::exit(1);
+                    }
+                };
+                yart::editor::Editor::with_config(&config)
+            } else {
+                yart::editor::Editor::new()
+            }
+        };
+
+        let options = eframe::NativeOptions::default();
+        let _ = eframe::run_native("YART Editor", options, Box::new(|_cc| Ok(Box::new(editor))));
+    }
+
+    let config_path = args.get(1).unwrap_or_else(|| {
         error!("no config file supplied");
         print_usage();
         process::exit(1);
