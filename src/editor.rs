@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use eframe::egui::{self};
+use eframe::egui::{self, Context};
 
-use crate::config::{self, ViewportConfig};
+use crate::config::ViewportConfig;
 use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
 use crate::load_scene_from_config;
 use crate::math::{Point3, Vec3};
@@ -17,58 +17,10 @@ pub struct Editor {
     // Dialog state
     add_object_dialog_open: bool,
     add_material_dialog_open: bool,
-    pending_object: PendingObject,
-    pending_material: PendingMaterial,
-}
-
-#[derive(Clone)]
-struct PendingObject {
-    obj_type: String,
-    position: Vec3,
-    radius: f64,
-    p1: Point3,
-    p2: Point3,
-    p3: Point3,
-    path: String,
-    material: String,
-    error: Option<String>,
-}
-
-impl Default for PendingObject {
-    fn default() -> Self {
-        Self {
-            obj_type: "sphere".to_string(),
-            position: Vec3::new(0.0, 0.0, -1.0),
-            radius: 0.5,
-            p1: Point3::new(0.0, 0.0, 0.0),
-            p2: Point3::new(1.0, 0.0, 0.0),
-            p3: Point3::new(0.0, 1.0, 0.0),
-            path: String::new(),
-            material: String::new(),
-            error: None,
-        }
-    }
-}
-
-#[derive(Clone)]
-struct PendingMaterial {
-    mat_type: String,
-    name: String,
-    albedo: [f32; 3],
-    fuzz: f64,
-    error: Option<String>,
-}
-
-impl Default for PendingMaterial {
-    fn default() -> Self {
-        Self {
-            mat_type: "lambertian".to_string(),
-            name: String::new(),
-            albedo: [0.0; 3],
-            fuzz: 0.3,
-            error: None,
-        }
-    }
+    pending_object: Option<ObjectConfig>,
+    pending_object_error: Option<String>,
+    pending_material: Option<MaterialConfig>,
+    pending_material_error: Option<String>,
 }
 
 impl Editor {
@@ -80,8 +32,10 @@ impl Editor {
             selected_material: None,
             add_object_dialog_open: false,
             add_material_dialog_open: false,
-            pending_object: PendingObject::default(),
-            pending_material: PendingMaterial::default(),
+            pending_object: None,
+            pending_object_error: None,
+            pending_material: None,
+            pending_material_error: None,
         }
     }
 
@@ -97,6 +51,98 @@ impl Editor {
         self.preview_texture = None;
         self.selected_object = None;
         self.selected_material = None;
+    }
+
+    fn render_add_object_dialog(&mut self, ctx: &Context) {
+        let mut cancel_clicked = false;
+        let mut add_clicked = false;
+        let default_material = self
+            .config
+            .materials
+            .first()
+            .map(|m| m.name().to_string())
+            .unwrap_or_default();
+
+        egui::Window::new("Add Object")
+            .open(&mut self.add_object_dialog_open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                if let Some(ref mut obj) = self.pending_object {
+                    object_type_selector(ui, obj, &default_material);
+                    edit_object_properties(ui, obj, &self.config.materials);
+                }
+
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        cancel_clicked = true;
+                    }
+                    if ui.button("Add").clicked() {
+                        add_clicked = true;
+                    }
+                });
+
+                if let Some(ref error) = self.pending_object_error {
+                    ui.colored_label(egui::Color32::RED, error);
+                }
+            });
+
+        if cancel_clicked {
+            self.add_object_dialog_open = false;
+        }
+        if add_clicked {
+            if let Some(ref obj) = self.pending_object {
+                if let Err(e) = validate_object(obj, &self.config.materials) {
+                    self.pending_object_error = Some(e);
+                } else {
+                    self.config.objects.push(obj.clone());
+                    self.add_object_dialog_open = false;
+                }
+            }
+        }
+    }
+
+    fn render_add_material_dialog(&mut self, ctx: &Context) {
+        let mut cancel_clicked = false;
+        let mut add_clicked = false;
+
+        egui::Window::new("Add Material")
+            .open(&mut self.add_material_dialog_open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                if let Some(ref mut mat) = self.pending_material {
+                    material_type_selector(ui, mat, &self.config.materials);
+                    edit_material_properties(ui, mat);
+                }
+
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        cancel_clicked = true;
+                    }
+                    if ui.button("Add").clicked() {
+                        add_clicked = true;
+                    }
+                });
+
+                if let Some(ref error) = self.pending_material_error {
+                    ui.colored_label(egui::Color32::RED, error);
+                }
+            });
+
+        if cancel_clicked {
+            self.add_material_dialog_open = false;
+        }
+        if add_clicked {
+            if let Some(ref mat) = self.pending_material {
+                if let Err(e) = validate_material(mat, &self.config.materials) {
+                    self.pending_material_error = Some(e);
+                } else {
+                    self.config.materials.push(mat.clone());
+                    self.add_material_dialog_open = false;
+                }
+            }
+        }
     }
 }
 
@@ -154,17 +200,41 @@ fn vector_input(ui: &mut egui::Ui, vector: &mut Vec3) {
     });
 }
 
+fn color_input(ui: &mut egui::Ui, color: &mut Vec3) {
+    let mut as_f32_array = [color.x as f32, color.y as f32, color.z as f32];
+
+    ui.horizontal(|ui| {
+        vector_input(ui, color);
+        egui::color_picker::color_edit_button_rgb(ui, &mut as_f32_array);
+    });
+
+    *color = Vec3::new(
+        as_f32_array[0] as f64,
+        as_f32_array[1] as f64,
+        as_f32_array[2] as f64,
+    );
+}
+
 impl eframe::App for Editor {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
+                    if ui.button("Load Scene").clicked() {
+                        if let Some(path) = rfd::FileDialog::new()
+                            .add_filter("TOML files", &["toml"])
+                            .pick_file()
+                        {
+                            if let Ok(config) = Config::from_path(path.as_path()) {
+                                self.load_config(config);
+                            }
+                        }
+                    }
+                    if ui.button("Save Scene").clicked() {
+                        println!("TODO: export config");
+                    }
                     if ui.button("Quit").clicked() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-
-                    if ui.button("Save").clicked() {
-                        println!("TODO: export config");
                     }
                 });
             });
@@ -175,20 +245,26 @@ impl eframe::App for Editor {
 
             ui.horizontal(|ui| {
                 if ui.button("+ Add object").clicked() {
-                    self.pending_object = PendingObject {
+                    self.pending_object = Some(ObjectConfig::Sphere {
+                        position: Vec3::new(0.0, 0.0, -1.0),
+                        radius: 1.0,
                         material: self
                             .config
                             .materials
                             .first()
                             .map(|m| m.name().to_string())
                             .unwrap_or_default(),
-                        ..Default::default()
-                    };
+                    });
+                    self.pending_object_error = None;
                     self.add_object_dialog_open = true;
                 }
 
                 if ui.button("+ Add material").clicked() {
-                    self.pending_material = PendingMaterial::default();
+                    self.pending_material = Some(MaterialConfig::Lambertian {
+                        name: new_material_name("lambertian", &self.config.materials),
+                        albedo: Vec3::new(0.5, 0.5, 0.5),
+                    });
+                    self.pending_material_error = None;
                     self.add_material_dialog_open = true;
                 }
             });
@@ -248,7 +324,18 @@ impl eframe::App for Editor {
         });
 
         egui::SidePanel::right("right_panel").show(ctx, |ui| {
-            panel_heading(ui, "Properties");
+            panel_heading(
+                ui,
+                format!(
+                    "{} Properties",
+                    if self.selected_material.is_some() {
+                        "Material"
+                    } else {
+                        "Object"
+                    }
+                )
+                .as_str(),
+            );
 
             ui.vertical(|ui| {
                 if let Some(obj_idx) = self.selected_object {
@@ -262,6 +349,42 @@ impl eframe::App for Editor {
                 } else {
                     ui.label("Select an object or material to edit");
                 }
+            });
+
+            ui.separator();
+
+            panel_heading(ui, "Scene Settings");
+
+            ui.vertical(|ui| {
+                egui::CollapsingHeader::new("Camera")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        edit_camera_config(ui, &mut self.config.camera);
+                    });
+
+                egui::CollapsingHeader::new("Renderer")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        edit_renderer_config(ui, &mut self.config.renderer);
+                    });
+
+                egui::CollapsingHeader::new("Image")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        edit_image_config(ui, &mut self.config.image);
+                    });
+
+                egui::CollapsingHeader::new("Sky")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        edit_sky_config(ui, &mut self.config.sky);
+                    });
+
+                egui::CollapsingHeader::new("Viewport")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        edit_viewport_config(ui, &mut self.config.viewport);
+                    });
             });
 
             ui.separator();
@@ -322,241 +445,139 @@ impl eframe::App for Editor {
         });
 
         // Object Dialog
-        let mut object_dialog_open = self.add_object_dialog_open;
-        if object_dialog_open {
-            println!("add object!!!!");
-            egui::Window::new("Add Object")
-                .open(&mut object_dialog_open)
-                .collapsible(false)
-                .resizable(false)
-                .show(ctx, |ui| {
-                    add_object_dialog(ui, &mut self.pending_object, &self.config.materials);
-
-                    ui.horizontal(|ui| {
-                        if ui.button("Cancel").clicked() {
-                            self.add_object_dialog_open = false;
-                        }
-                        if ui.button("Add").clicked() {
-                            if let Some(obj) = validate_and_create_object(
-                                &self.pending_object,
-                                &self.config.materials,
-                            ) {
-                                self.config.objects.push(obj);
-                                self.add_object_dialog_open = false;
-                            } else {
-                                self.pending_object.error =
-                                    Some("Please fill in all required fields".to_string());
-                            }
-                        }
-                    });
-
-                    if let Some(ref error) = self.pending_object.error {
-                        ui.colored_label(egui::Color32::RED, error);
-                    }
-                });
-            self.add_object_dialog_open = object_dialog_open;
+        if self.add_object_dialog_open {
+            self.render_add_object_dialog(ctx);
         }
 
         // Material Dialog
-        let mut material_dialog_open = self.add_material_dialog_open;
-        if material_dialog_open {
-            egui::Window::new("Add Material")
-                .open(&mut material_dialog_open)
-                .collapsible(false)
-                .resizable(false)
-                .show(ctx, |ui| {
-                    add_material_dialog(ui, &mut self.pending_material);
-
-                    ui.horizontal(|ui| {
-                        if ui.button("Cancel").clicked() {
-                            self.add_material_dialog_open = false;
-                        }
-                        if ui.button("Add").clicked() {
-                            if let Some(mat) = validate_and_create_material(
-                                &self.pending_material,
-                                &self.config.materials,
-                            ) {
-                                self.config.materials.push(mat);
-                                self.add_material_dialog_open = false;
-                            } else {
-                                self.pending_material.error =
-                                    Some("Please enter a unique name".to_string());
-                            }
-                        }
-                    });
-
-                    if let Some(ref error) = self.pending_material.error {
-                        ui.colored_label(egui::Color32::RED, error);
-                    }
-                });
-            self.add_material_dialog_open = material_dialog_open;
+        if self.add_material_dialog_open {
+            self.render_add_material_dialog(ctx);
         }
     }
 }
 
-fn add_object_dialog(ui: &mut egui::Ui, pending: &mut PendingObject, materials: &[MaterialConfig]) {
-    ui.group(|ui| {
+fn object_type_selector(ui: &mut egui::Ui, obj: &mut ObjectConfig, default_material: &str) {
+    let current_type = match obj {
+        ObjectConfig::Sphere { .. } => "sphere",
+        ObjectConfig::Triangle { .. } => "triangle",
+        ObjectConfig::Mesh { .. } => "mesh",
+    };
+    let mut obj_type = current_type.to_string();
+
+    ui.horizontal(|ui| {
         ui.label("Type:");
-        egui::ComboBox::from_id_salt("object_type")
-            .selected_text(&pending.obj_type)
+        egui::ComboBox::from_id_salt("object_type_dialog")
+            .selected_text(&obj_type)
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut pending.obj_type, "sphere".to_string(), "Sphere");
-                ui.selectable_value(&mut pending.obj_type, "triangle".to_string(), "Triangle");
-                ui.selectable_value(&mut pending.obj_type, "mesh".to_string(), "Mesh");
-            });
-
-        match pending.obj_type.as_str() {
-            "sphere" => {
-                ui.horizontal(|ui| {
-                    ui.label("Position:");
-                    vector_input(ui, &mut pending.position);
-                });
-                ui.add(
-                    egui::DragValue::new(&mut pending.radius)
-                        .speed(0.1)
-                        .range(0.0..=f64::MAX),
-                );
-            }
-            "mesh" => {
-                ui.horizontal(|ui| {
-                    ui.label("Path:");
-                    ui.text_edit_singleline(&mut pending.path);
-                    if ui.button("Browse").clicked() {
-                        if let Some(path) = rfd::FileDialog::new()
-                            .add_filter("OBJ files", &["obj"])
-                            .pick_file()
-                        {
-                            pending.path = path.display().to_string();
-                        }
-                    }
-                });
-            }
-            _ => {}
-        }
-
-        ui.label("Material:");
-        egui::ComboBox::from_id_salt("object_material")
-            .selected_text(pending.material.clone())
-            .show_ui(ui, |ui| {
-                for mat in materials {
-                    ui.selectable_value(&mut pending.material, mat.name().to_string(), mat.name());
-                }
+                ui.selectable_value(&mut obj_type, "sphere".to_string(), "Sphere");
+                ui.selectable_value(&mut obj_type, "triangle".to_string(), "Triangle");
+                ui.selectable_value(&mut obj_type, "mesh".to_string(), "Mesh");
             });
     });
+
+    if obj_type != current_type {
+        *obj = match obj_type.as_str() {
+            "sphere" => ObjectConfig::Sphere {
+                position: Vec3::new(0.0, 0.0, -1.0),
+                radius: 1.0,
+                material: default_material.to_string(),
+            },
+            "mesh" => ObjectConfig::Mesh {
+                path: PathBuf::new(),
+                material: default_material.to_string(),
+            },
+            _ => obj.clone(),
+        };
+    }
 }
 
-fn add_material_dialog(ui: &mut egui::Ui, pending: &mut PendingMaterial) {
-    ui.group(|ui| {
+fn material_type_selector(
+    ui: &mut egui::Ui,
+    mat: &mut MaterialConfig,
+    existing: &[MaterialConfig],
+) {
+    let current_type = material_label(&mat);
+
+    let mut mat_type = current_type.to_string();
+
+    ui.horizontal(|ui| {
         ui.label("Type:");
-        egui::ComboBox::from_id_salt("material_type")
-            .selected_text(&pending.mat_type)
+        egui::ComboBox::from_id_salt("material_type_dialog")
+            .selected_text(&mat_type)
             .show_ui(ui, |ui| {
+                ui.selectable_value(&mut mat_type, "lambertian".to_string(), "Lambertian");
+                ui.selectable_value(&mut mat_type, "metal".to_string(), "Metal");
                 ui.selectable_value(
-                    &mut pending.mat_type,
-                    "lambertian".to_string(),
-                    "Lambertian",
-                );
-                ui.selectable_value(&mut pending.mat_type, "metal".to_string(), "Metal");
-                ui.selectable_value(
-                    &mut pending.mat_type,
+                    &mut mat_type,
                     "normal_vis".to_string(),
                     "Normal Visualization",
                 );
             });
-
-        ui.text_edit_singleline(&mut pending.name);
-
-        match pending.mat_type.as_str() {
-            "lambertian" | "metal" => {
-                ui.horizontal(|ui| {
-                    ui.label("Albedo:");
-                    egui::color_picker::color_edit_button_rgb(ui, &mut pending.albedo);
-                    println!("{:?}", pending.albedo);
-                });
-
-                if pending.mat_type == "metal" {
-                    ui.add(
-                        egui::DragValue::new(&mut pending.fuzz)
-                            .speed(0.05)
-                            .range(0.0..=1.0),
-                    );
-                }
-            }
-            _ => {}
-        }
     });
+
+    if mat_type != current_type {
+        let default_name = new_material_name(&mat_type, existing);
+        *mat = match mat_type.as_str() {
+            "lambertian" => MaterialConfig::Lambertian {
+                name: default_name,
+                albedo: Vec3::new(0.5, 0.5, 0.5),
+            },
+            "metal" => MaterialConfig::Metal {
+                name: default_name,
+                albedo: Vec3::new(0.5, 0.5, 0.5),
+                fuzz: 0.3,
+            },
+            "normal_vis" => MaterialConfig::NormalVisualization { name: default_name },
+            _ => mat.clone(),
+        };
+    }
 }
 
-fn validate_and_create_object(
-    pending: &PendingObject,
-    materials: &[MaterialConfig],
-) -> Option<ObjectConfig> {
-    let material_exists = materials.iter().any(|m| m.name() == pending.material);
+fn new_material_name(
+    selected_material_label: &str,
+    existing_materials: &[MaterialConfig],
+) -> String {
+    let n = existing_materials
+        .iter()
+        .filter(|mat| material_label(mat).eq(selected_material_label))
+        .count();
+    format!("{selected_material_label}_{n}")
+}
+
+fn validate_object(obj: &ObjectConfig, materials: &[MaterialConfig]) -> Result<(), String> {
+    let material_name = match obj {
+        ObjectConfig::Sphere { material, .. } => material,
+        ObjectConfig::Triangle { material, .. } => material,
+        ObjectConfig::Mesh { material, .. } => material,
+    };
+
+    let material_exists = materials.iter().any(|m| m.name() == *material_name);
     if !material_exists {
-        return None;
+        return Err("Material not found".to_string());
     }
 
-    match pending.obj_type.as_str() {
-        "sphere" => Some(ObjectConfig::Sphere {
-            position: pending.position,
-            radius: pending.radius,
-            material: pending.material.clone(),
-        }),
-        "triangle" => Some(ObjectConfig::Triangle {
-            p1: pending.p1,
-            p2: pending.p2,
-            p3: pending.p3,
-            material: pending.material.clone(),
-        }),
-        "mesh" => {
-            if pending.path.is_empty() {
-                return None;
-            }
-            Some(ObjectConfig::Mesh {
-                path: PathBuf::from(&pending.path),
-                material: pending.material.clone(),
-            })
+    if let ObjectConfig::Mesh { path, .. } = obj {
+        if path.as_os_str().is_empty() {
+            return Err("Mesh path is required".to_string());
         }
-        _ => None,
     }
+
+    Ok(())
 }
 
-fn validate_and_create_material(
-    pending: &PendingMaterial,
-    existing: &[MaterialConfig],
-) -> Option<MaterialConfig> {
-    if pending.name.is_empty() {
-        return None;
+fn validate_material(mat: &MaterialConfig, existing: &[MaterialConfig]) -> Result<(), String> {
+    let name = mat.name();
+
+    if name.is_empty() {
+        return Err("Name is required".to_string());
     }
 
-    let name_unique = !existing.iter().any(|m| m.name() == pending.name);
+    let name_unique = !existing.iter().any(|m| m.name() == name);
     if !name_unique {
-        return None;
+        return Err("Name must be unique".to_string());
     }
 
-    match pending.mat_type.as_str() {
-        "lambertian" => Some(MaterialConfig::Lambertian {
-            name: pending.name.clone(),
-            albedo: Vec3::new(
-                pending.albedo[0] as f64,
-                pending.albedo[1] as f64,
-                pending.albedo[2] as f64,
-            ),
-        }),
-        "metal" => Some(MaterialConfig::Metal {
-            name: pending.name.clone(),
-            albedo: Vec3::new(
-                pending.albedo[0] as f64,
-                pending.albedo[1] as f64,
-                pending.albedo[2] as f64,
-            ),
-            fuzz: pending.fuzz,
-        }),
-        "normal_vis" => Some(MaterialConfig::NormalVisualization {
-            name: pending.name.clone(),
-        }),
-        _ => None,
-    }
+    Ok(())
 }
 
 fn edit_object_properties(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: &[MaterialConfig]) {
@@ -579,7 +600,7 @@ fn edit_object_properties(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: 
                 });
                 ui.end_row();
 
-                ui.label("Radius");
+                ui.label("Radius:");
                 ui.add(egui::DragValue::new(radius).speed(0.1));
                 ui.end_row();
 
@@ -594,7 +615,7 @@ fn edit_object_properties(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: 
                 ui.end_row();
             }
             ObjectConfig::Mesh { path, material } => {
-                let mut display_path = path.as_mut_os_string().clone().into_string().unwrap();
+                let mut display_path = path.to_string_lossy().to_string();
                 ui.label("Type:");
                 ui.label("Mesh");
                 ui.end_row();
@@ -606,10 +627,10 @@ fn edit_object_properties(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: 
                         .add_filter("OBJ files", &["obj"])
                         .pick_file()
                     {
-                        // TODO: make the path editable
                         display_path = selected_path.display().to_string();
                     }
                 }
+                *path = PathBuf::from(display_path);
                 ui.end_row();
 
                 ui.label("Material:");
@@ -624,21 +645,6 @@ fn edit_object_properties(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: 
             }
             _ => {}
         });
-}
-
-fn color_input(ui: &mut egui::Ui, color: &mut Vec3) {
-    let mut as_f32_array = [color.x as f32, color.y as f32, color.z as f32];
-
-    ui.horizontal(|ui| {
-        vector_input(ui, color);
-        egui::color_picker::color_edit_button_rgb(ui, &mut as_f32_array);
-    });
-
-    *color = Vec3::new(
-        as_f32_array[0] as f64,
-        as_f32_array[1] as f64,
-        as_f32_array[2] as f64,
-    );
 }
 
 fn edit_material_properties(ui: &mut egui::Ui, mat: &mut MaterialConfig) {
@@ -663,7 +669,7 @@ fn edit_material_properties(ui: &mut egui::Ui, mat: &mut MaterialConfig) {
                 ui.label("Metal");
                 ui.end_row();
 
-                ui.label("Name");
+                ui.label("Name:");
                 ui.text_edit_singleline(name);
                 ui.end_row();
 
@@ -671,10 +677,152 @@ fn edit_material_properties(ui: &mut egui::Ui, mat: &mut MaterialConfig) {
                 color_input(ui, albedo);
                 ui.end_row();
 
-                ui.label("Fuzz");
-                ui.add(egui::DragValue::new(fuzz).speed(0.05).range(0.0..=1.0));
+                ui.label("Fuzz:");
+                ui.add(egui::Slider::new(fuzz, 0.0..=1.0));
             }
-            _ => {}
+            MaterialConfig::NormalVisualization { name } => {
+                ui.label("Type:");
+                ui.label("Normal visualizer");
+                ui.end_row();
+
+                ui.label("Name:");
+                ui.text_edit_singleline(name);
+                ui.end_row();
+            }
+        });
+}
+
+fn edit_camera_config(ui: &mut egui::Ui, camera: &mut crate::config::CameraConfig) {
+    egui::Grid::new("camera_config_grid")
+        .num_columns(2)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.label("Aspect Ratio:");
+            ui.add(egui::DragValue::new(&mut camera.aspect_ratio).speed(0.1));
+            ui.end_row();
+
+            ui.label("Field of View:");
+            ui.add(egui::DragValue::new(&mut camera.field_of_view).speed(1.0));
+            ui.end_row();
+
+            ui.label("Position:");
+            ui.horizontal(|ui| {
+                vector_input(ui, &mut camera.position.0);
+            });
+            ui.end_row();
+
+            ui.label("Look At:");
+            ui.horizontal(|ui| {
+                vector_input(ui, &mut camera.look_at.0);
+            });
+            ui.end_row();
+        });
+}
+
+fn edit_renderer_config(ui: &mut egui::Ui, renderer: &mut crate::config::RendererConfig) {
+    egui::Grid::new("renderer_config_grid")
+        .num_columns(2)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.label("Samples per Pixel:");
+            ui.add(egui::DragValue::new(&mut renderer.samples_per_pixel).speed(1.0));
+            ui.end_row();
+
+            ui.label("Max Bounces:");
+            ui.add(egui::DragValue::new(&mut renderer.max_bounces).speed(1.0));
+            ui.end_row();
+        });
+}
+
+fn edit_image_config(ui: &mut egui::Ui, image: &mut crate::config::ImageConfig) {
+    egui::Grid::new("image_config_grid")
+        .num_columns(2)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.label("Width:");
+            ui.add(egui::DragValue::new(&mut image.width).speed(10.0));
+            ui.end_row();
+
+            ui.label("Output:");
+            let mut output_str = image.output.to_string_lossy().to_string();
+            ui.text_edit_singleline(&mut output_str);
+            image.output = PathBuf::from(output_str);
+            ui.end_row();
+        });
+}
+
+fn edit_sky_config(ui: &mut egui::Ui, sky: &mut crate::config::SkyConfig) {
+    let current_type = match sky {
+        crate::config::SkyConfig::LinearGradient { .. } => "linear-gradient",
+        crate::config::SkyConfig::Solid { .. } => "solid",
+    };
+    let mut sky_type = current_type.to_string();
+
+    egui::Grid::new("sky_config_grid")
+        .num_columns(2)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt("sky_type")
+                .selected_text(&sky_type)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut sky_type,
+                        "linear-gradient".to_string(),
+                        "Linear Gradient",
+                    );
+                    ui.selectable_value(&mut sky_type, "solid".to_string(), "Solid Color");
+                });
+            ui.end_row();
+
+            match sky {
+                crate::config::SkyConfig::LinearGradient { from, to } => {
+                    ui.label("From:");
+                    color_input(ui, from);
+                    ui.end_row();
+
+                    ui.label("To:");
+                    color_input(ui, to);
+                    ui.end_row();
+                }
+                crate::config::SkyConfig::Solid { color } => {
+                    ui.label("Color:");
+                    color_input(ui, color);
+                    ui.end_row();
+                }
+            }
+        });
+
+    if sky_type != current_type {
+        *sky = match sky_type.as_str() {
+            "linear-gradient" => crate::config::SkyConfig::LinearGradient {
+                from: Vec3::new(1.0, 1.0, 1.0),
+                to: Vec3::new(0.5, 0.7, 1.0),
+            },
+            "solid" => crate::config::SkyConfig::Solid {
+                color: Vec3::new(0.5, 0.7, 1.0),
+            },
+            _ => sky.clone(),
+        };
+    }
+}
+
+fn edit_viewport_config(ui: &mut egui::Ui, viewport: &mut ViewportConfig) {
+    egui::Grid::new("viewport_config_grid")
+        .num_columns(2)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.label("Preview Width:");
+            ui.add(egui::DragValue::new(&mut viewport.width).speed(10.0));
+            ui.end_row();
+
+            ui.label("Preview Samples:");
+            ui.add(egui::DragValue::new(&mut viewport.samples_per_pixel).speed(1.0));
+            ui.end_row();
+
+            ui.label("Preview Bounces:");
+            ui.add(egui::DragValue::new(&mut viewport.max_bounces).speed(1.0));
+            ui.end_row();
         });
 }
 
@@ -728,4 +876,12 @@ fn render_preview(config: &Config) -> Option<egui::ColorImage> {
         [width, height],
         &rgba_data,
     ))
+}
+
+fn material_label(mat: &MaterialConfig) -> String {
+    match mat {
+        MaterialConfig::Lambertian { .. } => "lambertian".into(),
+        MaterialConfig::Metal { .. } => "metal".into(),
+        MaterialConfig::NormalVisualization { .. } => "normal_vis".into(),
+    }
 }
