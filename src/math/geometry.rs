@@ -93,7 +93,7 @@ impl Hittable for Triangle {
         let s = ray.origin - self.p1;
 
         let u = f * s.dot(h);
-       if u < -eps || u > 1.0 + eps {
+        if u < -eps || u > 1.0 + eps {
             return None;
         }
 

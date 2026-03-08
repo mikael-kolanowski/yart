@@ -44,4 +44,3 @@ fn bunny() {
 
     golden_test("bunny", &mut sampler)
 }
-

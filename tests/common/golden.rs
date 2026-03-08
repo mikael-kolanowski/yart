@@ -17,10 +17,8 @@ fn golden_image_path(name: &str) -> PathBuf {
 }
 
 fn load_golden_scene(name: &str) -> (Camera, World, Renderer) {
-    let base_path = PathBuf::from("golden_images")
-        .join("scenes");
-    let config_path = base_path
-        .join(name.to_owned() + ".toml");
+    let base_path = PathBuf::from("golden_images").join("scenes");
+    let config_path = base_path.join(name.to_owned() + ".toml");
     let contents = fs::read_to_string(&config_path).expect("could not load golden scene");
     let config: yart::Config = toml::from_str(&contents).unwrap_or_else(|err| {
         error!("could not read config: {err}");
