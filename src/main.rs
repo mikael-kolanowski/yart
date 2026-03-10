@@ -29,9 +29,9 @@ fn main() {
                         process::exit(1);
                     }
                 };
-                yart::editor::Editor::with_config(&config)
+                yart::gui::Editor::with_config(&config)
             } else {
-                yart::editor::Editor::new()
+                yart::gui::Editor::new()
             }
         };
 
