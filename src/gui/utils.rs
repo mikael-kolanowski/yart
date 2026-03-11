@@ -1,4 +1,9 @@
-use crate::config::*;
+use std::path::PathBuf;
+
+use crate::{
+    config::*,
+    math::{Point3, Vec3},
+};
 
 pub fn material_label(mat: &MaterialConfig) -> String {
     match mat {
@@ -53,4 +58,36 @@ pub fn validate_material(mat: &MaterialConfig, existing: &[MaterialConfig]) -> R
     }
 
     Ok(())
+}
+
+pub fn default_config() -> Config {
+    Config {
+        camera: crate::config::CameraConfig {
+            aspect_ratio: 16.0 / 9.0,
+            field_of_view: 90,
+            position: Point3::new(-1.0, 1.0, 1.0),
+            look_at: Point3::new(0.0, 0.0, -1.0),
+        },
+        renderer: crate::config::RendererConfig {
+            samples_per_pixel: 20,
+            max_bounces: 10,
+        },
+        image: crate::config::ImageConfig {
+            width: 400,
+            output: PathBuf::from("output.ppm"),
+        },
+        materials: vec![MaterialConfig::Lambertian {
+            name: "matte".to_string(),
+            albedo: Vec3::new(0.5, 0.5, 0.5),
+        }],
+        objects: vec![ObjectConfig::Sphere {
+            position: Vec3::new(0.0, 0.0, -1.0),
+            radius: 1.0,
+            material: "matte".to_string(),
+        }],
+        sky: SkyConfig::LinearGradient {
+            from: Vec3::new(1.0, 1.0, 1.0),
+            to: Vec3::new(0.5, 0.7, 1.0),
+        },
+    }
 }

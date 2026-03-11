@@ -1,15 +1,15 @@
-use log::error;
 use std::path::PathBuf;
 
 use eframe::egui;
+use log::error;
 
-use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
+use crate::config::{Config, MaterialConfig, ObjectConfig};
 use crate::load_scene_from_config;
-use crate::math::{Point3, Vec3};
 use crate::rendering::sampler::RandomSampler;
 
 use super::dialogs::{AddMaterialDialog, AddObjectDialog};
 use super::property_editors;
+use super::utils;
 use super::widgets;
 
 pub struct ViewportRendererConfig {
@@ -32,7 +32,7 @@ pub struct Editor {
 impl Editor {
     pub fn new() -> Self {
         Self {
-            config: default_config(),
+            config: utils::default_config(),
             viewport_renderer: ViewportRendererConfig {
                 samples_per_pixel: 10,
                 max_bounces: 10,
@@ -88,38 +88,6 @@ impl Editor {
     }
 }
 
-fn default_config() -> Config {
-    Config {
-        camera: crate::config::CameraConfig {
-            aspect_ratio: 16.0 / 9.0,
-            field_of_view: 90,
-            position: Point3::new(-1.0, 1.0, 1.0),
-            look_at: Point3::new(0.0, 0.0, -1.0),
-        },
-        renderer: crate::config::RendererConfig {
-            samples_per_pixel: 20,
-            max_bounces: 10,
-        },
-        image: crate::config::ImageConfig {
-            width: 400,
-            output: PathBuf::from("output.ppm"),
-        },
-        materials: vec![MaterialConfig::Lambertian {
-            name: "matte".to_string(),
-            albedo: Vec3::new(0.5, 0.5, 0.5),
-        }],
-        objects: vec![ObjectConfig::Sphere {
-            position: Vec3::new(0.0, 0.0, -1.0),
-            radius: 1.0,
-            material: "matte".to_string(),
-        }],
-        sky: SkyConfig::LinearGradient {
-            from: Vec3::new(1.0, 1.0, 1.0),
-            to: Vec3::new(0.5, 0.7, 1.0),
-        },
-    }
-}
-
 impl Default for Editor {
     fn default() -> Self {
         Self::new()
@@ -128,6 +96,16 @@ impl Default for Editor {
 
 impl eframe::App for Editor {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.ui_top_menu(ctx);
+        self.ui_left_panel(ctx);
+        self.ui_right_panel(ctx);
+        self.ui_central_panel(ctx);
+        self.ui_dialogs(ctx);
+    }
+}
+
+impl Editor {
+    fn ui_top_menu(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -156,7 +134,9 @@ impl eframe::App for Editor {
                 });
             });
         });
+    }
 
+    fn ui_left_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("left_panel").show(ctx, |ui| {
             widgets::panel_heading(ui, "Scene");
 
@@ -223,7 +203,9 @@ impl eframe::App for Editor {
 
             ui.separator();
         });
+    }
 
+    fn ui_right_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::right("right_panel").show(ctx, |ui| {
             widgets::panel_heading(
                 ui,
@@ -290,7 +272,9 @@ impl eframe::App for Editor {
 
             ui.separator();
         });
+    }
 
+    fn ui_central_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::Grid::new("main_grid")
                 .num_columns(2)
@@ -342,7 +326,9 @@ impl eframe::App for Editor {
                 }
             });
         });
+    }
 
+    fn ui_dialogs(&mut self, ctx: &egui::Context) {
         // Object Dialog
         if let Some(obj) = self.add_object_dialog.show(ctx, &self.config.materials) {
             self.config.objects.push(obj);
