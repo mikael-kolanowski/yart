@@ -274,7 +274,20 @@ impl Editor {
         });
     }
 
+    fn render_preview_to_texture(&mut self, ctx: &egui::Context) {
+        if let Some(color_image) = self.render_preview() {
+            self.preview_texture =
+                Some(ctx.load_texture("preview", color_image, egui::TextureOptions::NEAREST));
+        }
+    }
+
     fn ui_central_panel(&mut self, ctx: &egui::Context) {
+        let render_triggered = ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::P));
+
+        if render_triggered {
+            self.render_preview_to_texture(ctx);
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_min_size(egui::vec2(600.0, 400.0));
 
@@ -295,7 +308,7 @@ impl Editor {
                     ui.painter().text(
                         rect.center(),
                         egui::Align2::CENTER_CENTER,
-                        "Click 'Render Preview' to render",
+                        "Click 'Render Preview' (or press Ctrl+R) to render",
                         egui::FontId::default(),
                         egui::Color32::WHITE,
                     );
@@ -307,14 +320,8 @@ impl Editor {
             // Bottom buttons
             ui.separator();
             ui.horizontal(|ui| {
-                if ui.button("Render Preview").clicked() {
-                    if let Some(color_image) = self.render_preview() {
-                        self.preview_texture = Some(ctx.load_texture(
-                            "preview",
-                            color_image,
-                            egui::TextureOptions::NEAREST,
-                        ));
-                    }
+                if ui.button("Render Preview (Ctrl+R)").clicked() {
+                    self.render_preview_to_texture(ctx);
                 }
             });
         });
