@@ -58,6 +58,34 @@ impl Editor {
         self.selected_object = None;
         self.selected_material = None;
     }
+    fn render_preview(&self) -> Option<egui::ColorImage> {
+        let mut rng = rand::rng();
+        let mut sampler = RandomSampler::new(&mut rng);
+
+        let (camera, world, renderer) = load_scene_from_config(&self.config, &PathBuf::from("."));
+
+        let image = renderer.render(&world, &camera, &mut sampler, false);
+
+        let width = image.width as usize;
+        let height = image.height as usize;
+
+        let mut rgba_data = Vec::with_capacity(width * height * 4);
+
+        for y in 0..height {
+            for x in 0..width {
+                let pixel = image.pixels[y * width + x];
+                rgba_data.push((pixel.r * 255.0) as u8);
+                rgba_data.push((pixel.g * 255.0) as u8);
+                rgba_data.push((pixel.b * 255.0) as u8);
+                rgba_data.push(255);
+            }
+        }
+
+        Some(egui::ColorImage::from_rgba_unmultiplied(
+            [width, height],
+            &rgba_data,
+        ))
+    }
 }
 
 fn default_config() -> Config {
@@ -273,7 +301,7 @@ impl eframe::App for Editor {
                     ui.set_min_size(egui::vec2(600.0, 400.0));
 
                     // Preview viewport
-                    let preview_width = 400.0;
+                    let preview_width = 800.0;
                     let preview_height = preview_width / self.config.camera.aspect_ratio;
                     ui.vertical(|ui| {
                         let preview_size = egui::vec2(preview_width as f32, preview_height as f32);
@@ -304,7 +332,7 @@ impl eframe::App for Editor {
             ui.separator();
             ui.horizontal(|ui| {
                 if ui.button("Render Preview").clicked() {
-                    if let Some(color_image) = render_preview(&self, &self.config) {
+                    if let Some(color_image) = self.render_preview() {
                         self.preview_texture = Some(ctx.load_texture(
                             "preview",
                             color_image,
@@ -325,53 +353,4 @@ impl eframe::App for Editor {
             self.config.materials.push(mat);
         }
     }
-}
-
-fn render_preview(editor: &Editor, config: &Config) -> Option<egui::ColorImage> {
-    let mut rng = rand::rng();
-    let mut sampler = RandomSampler::new(&mut rng);
-
-    let preview_config = Config {
-        camera: crate::config::CameraConfig {
-            aspect_ratio: config.camera.aspect_ratio,
-            field_of_view: config.camera.field_of_view,
-            position: config.camera.position,
-            look_at: config.camera.look_at,
-        },
-        renderer: crate::config::RendererConfig {
-            samples_per_pixel: editor.viewport_renderer.samples_per_pixel,
-            max_bounces: editor.viewport_renderer.max_bounces,
-        },
-        image: crate::config::ImageConfig {
-            width: config.image.width,
-            output: PathBuf::from("/dev/null"),
-        },
-        materials: config.materials.clone(),
-        objects: config.objects.clone(),
-        sky: config.sky.clone(),
-    };
-
-    let (camera, world, renderer) = load_scene_from_config(&preview_config, &PathBuf::from("."));
-
-    let image = renderer.render(&world, &camera, &mut sampler, false);
-
-    let width = image.width as usize;
-    let height = image.height as usize;
-
-    let mut rgba_data = Vec::with_capacity(width * height * 4);
-
-    for y in 0..height {
-        for x in 0..width {
-            let pixel = image.pixels[y * width + x];
-            rgba_data.push((pixel.r * 255.0) as u8);
-            rgba_data.push((pixel.g * 255.0) as u8);
-            rgba_data.push((pixel.b * 255.0) as u8);
-            rgba_data.push(255);
-        }
-    }
-
-    Some(egui::ColorImage::from_rgba_unmultiplied(
-        [width, height],
-        &rgba_data,
-    ))
 }
