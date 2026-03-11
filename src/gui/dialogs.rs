@@ -2,9 +2,68 @@ use eframe::egui::{self, Context};
 use std::path::PathBuf;
 
 use super::property_editors;
+use super::shortcuts::Shortcuts;
 use super::utils;
 use crate::config::{MaterialConfig, ObjectConfig};
 use crate::math::Vec3;
+
+pub struct HelpDialog {
+    open: bool,
+}
+
+impl HelpDialog {
+    pub fn new() -> Self {
+        Self { open: false }
+    }
+
+    pub fn open(&mut self) {
+        self.open = true;
+    }
+
+    pub fn show(&mut self, ctx: &Context, shortcuts: &Shortcuts) {
+        if !self.open {
+            return;
+        }
+
+        let mut dialog_open = self.open;
+        let mut close_requested = false;
+
+        egui::Window::new("Keyboard Shortcuts")
+            .open(&mut dialog_open)
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                egui::Grid::new("shortcuts_grid")
+                    .num_columns(2)
+                    .spacing([20.0, 5.0])
+                    .show(ui, |ui| {
+                        // Render Preview shortcut
+                        let render_shortcut_str =
+                            ctx.format_shortcut(&shortcuts.render_preview.shortcut);
+                        ui.label("Render Preview:");
+                        ui.label(render_shortcut_str);
+                        ui.end_row();
+
+                        // Show Help shortcut
+                        let help_shortcut_str = ctx.format_shortcut(&shortcuts.show_help.shortcut);
+                        ui.label("Show Help:");
+                        ui.label(help_shortcut_str);
+                        ui.end_row();
+                    });
+
+                ui.separator();
+                if ui.button("Close").clicked() {
+                    close_requested = true;
+                }
+            });
+
+        if close_requested {
+            self.open = false;
+        } else {
+            self.open = dialog_open;
+        }
+    }
+}
 
 pub struct AddObjectDialog {
     open: bool,

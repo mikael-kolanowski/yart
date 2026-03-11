@@ -7,8 +7,9 @@ use crate::config::{Config, MaterialConfig, ObjectConfig};
 use crate::load_scene_from_config;
 use crate::rendering::sampler::RandomSampler;
 
-use super::dialogs::{AddMaterialDialog, AddObjectDialog};
+use super::dialogs::{AddMaterialDialog, AddObjectDialog, HelpDialog};
 use super::property_editors;
+use super::shortcuts::Shortcuts;
 use super::utils;
 use super::widgets;
 
@@ -27,6 +28,10 @@ pub struct Editor {
     // Dialogs
     add_object_dialog: AddObjectDialog,
     add_material_dialog: AddMaterialDialog,
+    help_dialog: HelpDialog,
+
+    // Shortcuts
+    shortcuts: Shortcuts,
 }
 
 impl Editor {
@@ -42,6 +47,8 @@ impl Editor {
             selected_material: None,
             add_object_dialog: AddObjectDialog::new(),
             add_material_dialog: AddMaterialDialog::new(),
+            help_dialog: HelpDialog::new(),
+            shortcuts: Shortcuts::new(),
         }
     }
 
@@ -106,6 +113,11 @@ impl eframe::App for Editor {
 
 impl Editor {
     fn ui_top_menu(&mut self, ctx: &egui::Context) {
+        // Check for help shortcut
+        if self.shortcuts.is_pressed(ctx, &self.shortcuts.show_help) {
+            self.help_dialog.open();
+        }
+
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -130,6 +142,13 @@ impl Editor {
                     }
                     if ui.button("Quit").clicked() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                });
+
+                ui.menu_button("Help", |ui| {
+                    if ui.button("Keyboard Shortcuts").clicked() {
+                        self.help_dialog.open();
+                        ui.close();
                     }
                 });
             });
@@ -282,9 +301,11 @@ impl Editor {
     }
 
     fn ui_central_panel(&mut self, ctx: &egui::Context) {
-        let render_triggered = ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::P));
-
-        if render_triggered {
+        // Check for keyboard shortcuts
+        if self
+            .shortcuts
+            .is_pressed(ctx, &self.shortcuts.render_preview)
+        {
             self.render_preview_to_texture(ctx);
         }
 
@@ -337,5 +358,8 @@ impl Editor {
         if let Some(mat) = self.add_material_dialog.show(ctx, &self.config.materials) {
             self.config.materials.push(mat);
         }
+
+        // Help Dialog
+        self.help_dialog.show(ctx, &self.shortcuts);
     }
 }
