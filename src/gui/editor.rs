@@ -215,6 +215,9 @@ impl Editor {
                             MaterialConfig::NormalVisualization { name } => {
                                 format!("{} (Normal)", name)
                             }
+                            MaterialConfig::Dielectric { name, .. } => {
+                                format!("{} (Dielectric)", name)
+                            }
                         };
 
                         let is_selected = self.selected_material == Some(i);

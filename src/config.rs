@@ -2,10 +2,10 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+use serde::de::{self, Deserializer};
 use serde::Deserialize;
 use serde::Serialize;
 use serde::Serializer;
-use serde::de::{self, Deserializer};
 
 use crate::math::{Point3, Vec3};
 
@@ -129,6 +129,17 @@ pub enum MaterialConfig {
     },
     #[serde(rename = "normal_vis")]
     NormalVisualization { name: String },
+
+    #[serde(rename = "dielectric")]
+    Dielectric {
+        name: String,
+        #[serde(default = "default_ior")]
+        ior: f64,
+    },
+}
+
+fn default_ior() -> f64 {
+    1.5 // Default index of refraction for glass
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
@@ -187,6 +198,7 @@ impl MaterialConfig {
             MaterialConfig::Lambertian { name, .. } => name,
             MaterialConfig::Metal { name, .. } => name,
             MaterialConfig::NormalVisualization { name } => name,
+            MaterialConfig::Dielectric { name, .. } => name,
         }
     }
 
@@ -195,6 +207,7 @@ impl MaterialConfig {
             MaterialConfig::Lambertian { .. } => "Lambertian",
             MaterialConfig::Metal { .. } => "Metal",
             MaterialConfig::NormalVisualization { .. } => "Normal Visualization",
+            MaterialConfig::Dielectric { .. } => "Dielectric",
         }
     }
 }

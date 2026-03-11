@@ -9,7 +9,7 @@ use crate::color::Color;
 use crate::math::interval::Interval;
 use crate::math::{HitInfo, Point3, Ray, Sphere, Triangle};
 use crate::mesh::Mesh;
-use crate::rendering::material::{DummyMaterial, Lambertian, Metal, NormalVisualizer};
+use crate::rendering::material::{Dielectric, DummyMaterial, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
 use crate::{math::Hittable, rendering::Material};
 
@@ -38,6 +38,10 @@ impl World {
                 MaterialConfig::NormalVisualization { name } => {
                     let mat = NormalVisualizer;
                     material_map.insert(name.clone(), Arc::new(mat))
+                }
+                MaterialConfig::Dielectric { name, ior } => {
+                    let dielectric = Dielectric::new(*ior);
+                    material_map.insert(name.clone(), Arc::new(dielectric))
                 }
             };
         }

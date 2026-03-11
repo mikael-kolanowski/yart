@@ -115,6 +115,18 @@ pub fn material(ui: &mut egui::Ui, mat: &mut MaterialConfig) {
                 ui.text_edit_singleline(name);
                 ui.end_row();
             }
+            MaterialConfig::Dielectric { name, ior } => {
+                ui.label("Type:");
+                ui.label("Dielectric");
+                ui.end_row();
+
+                ui.label("Name:");
+                ui.text_edit_singleline(name);
+                ui.end_row();
+
+                ui.label("Index of Refraction:");
+                ui.add(egui::Slider::new(ior, 1.0..=2.5));
+            }
         });
 }
 

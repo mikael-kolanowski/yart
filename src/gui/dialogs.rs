@@ -291,9 +291,16 @@ fn material_type_selector(
                 ui.selectable_value(
                     mat,
                     MaterialConfig::NormalVisualization {
-                        name: normal_vis_name,
+                       name: normal_vis_name,
                     },
                     "Normal Visualization",
+                );
+
+                let default_dielectric_name = utils::new_material_name("dielectric", existing);
+                ui.selectable_value(
+                    mat,
+                    MaterialConfig::Dielectric { name: default_dielectric_name, ior: 1.5, },
+                    "Dielectric",
                 );
             });
     });

@@ -10,6 +10,7 @@ fn material_label(mat: &MaterialConfig) -> String {
         MaterialConfig::Lambertian { .. } => "lambertian".into(),
         MaterialConfig::Metal { .. } => "metal".into(),
         MaterialConfig::NormalVisualization { .. } => "normal_vis".into(),
+        MaterialConfig::Dielectric { .. } => "dielectric".into(),
     }
 }
 
