@@ -3,11 +3,15 @@ use eframe::egui;
 /// Represents a keyboard shortcut
 pub struct Shortcut {
     pub shortcut: egui::KeyboardShortcut,
+    pub description: String,
 }
 
 impl Shortcut {
-    pub const fn new(shortcut: egui::KeyboardShortcut) -> Self {
-        Self { shortcut }
+    pub const fn new(shortcut: egui::KeyboardShortcut, description: String) -> Self {
+        Self {
+            shortcut,
+            description,
+        }
     }
 }
 
@@ -22,24 +26,25 @@ pub struct Shortcuts {
 impl Shortcuts {
     pub fn new() -> Self {
         Self {
-            render_preview: Shortcut::new(egui::KeyboardShortcut::new(
-                egui::Modifiers::COMMAND,
-                egui::Key::R,
-            )),
+            render_preview: Shortcut::new(
+                egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::R),
+                "Render preview".into(),
+            ),
 
-            show_help: Shortcut::new(egui::KeyboardShortcut::new(
-                egui::Modifiers::COMMAND,
-                egui::Key::F1,
-            )),
+            show_help: Shortcut::new(
+                egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::F1),
+                "Show help".into(),
+            ),
 
-            load_scene: Shortcut::new(egui::KeyboardShortcut::new(
-                egui::Modifiers::COMMAND,
-                egui::Key::O,
-            )),
-            save_scene: Shortcut::new(egui::KeyboardShortcut::new(
-                egui::Modifiers::COMMAND,
-                egui::Key::S,
-            )),
+            load_scene: Shortcut::new(
+                egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::O),
+                "Load scene".into(),
+            ),
+
+            save_scene: Shortcut::new(
+                egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::S),
+                "Save scene".into(),
+            ),
         }
     }
 

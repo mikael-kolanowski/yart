@@ -37,18 +37,19 @@ impl HelpDialog {
                     .num_columns(2)
                     .spacing([20.0, 5.0])
                     .show(ui, |ui| {
-                        // Render Preview shortcut
-                        let render_shortcut_str =
-                            ctx.format_shortcut(&shortcuts.render_preview.shortcut);
-                        ui.label("Render Preview:");
-                        ui.label(render_shortcut_str);
-                        ui.end_row();
+                        let shortcuts = Shortcuts::new();
+                        for shortcut in vec![
+                            shortcuts.show_help,
+                            shortcuts.render_preview,
+                            shortcuts.load_scene,
+                            shortcuts.save_scene,
+                        ] {
+                            let display_shortcut = ctx.format_shortcut(&shortcut.shortcut);
 
-                        // Show Help shortcut
-                        let help_shortcut_str = ctx.format_shortcut(&shortcuts.show_help.shortcut);
-                        ui.label("Show Help:");
-                        ui.label(help_shortcut_str);
-                        ui.end_row();
+                            ui.label(format!("{}:", shortcut.description));
+                            ui.label(display_shortcut);
+                            ui.end_row();
+                        }
                     });
 
                 ui.separator();
