@@ -276,41 +276,33 @@ impl Editor {
 
     fn ui_central_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::Grid::new("main_grid")
-                .num_columns(2)
-                .spacing([10.0, 10.0])
-                .min_col_width(200.0)
-                .max_col_width(400.0)
-                .show(ui, |ui| {
-                    ui.set_min_size(egui::vec2(600.0, 400.0));
+            ui.set_min_size(egui::vec2(600.0, 400.0));
 
-                    // Preview viewport
-                    let preview_width = 800.0;
-                    let preview_height = preview_width / self.config.camera.aspect_ratio;
-                    ui.vertical(|ui| {
-                        let preview_size = egui::vec2(preview_width as f32, preview_height as f32);
+            // Preview viewport
+            let preview_width = 800.0;
+            let preview_height = preview_width / self.config.camera.aspect_ratio;
+            ui.vertical(|ui| {
+                let preview_size = egui::vec2(preview_width as f32, preview_height as f32);
 
-                        let (rect, _response) =
-                            ui.allocate_exact_size(preview_size, egui::Sense::click());
+                let (rect, _response) = ui.allocate_exact_size(preview_size, egui::Sense::click());
 
-                        if let Some(ref texture) = self.preview_texture {
-                            let image = egui::Image::new(texture);
-                            image.max_size(rect.size()).paint_at(ui, rect);
-                        } else {
-                            ui.painter()
-                                .rect_filled(rect, 0.0, egui::Color32::DARK_GRAY);
-                            ui.painter().text(
-                                rect.center(),
-                                egui::Align2::CENTER_CENTER,
-                                "Click 'Render Preview' to render",
-                                egui::FontId::default(),
-                                egui::Color32::WHITE,
-                            );
-                        }
-                    });
+                if let Some(ref texture) = self.preview_texture {
+                    let image = egui::Image::new(texture);
+                    image.max_size(rect.size()).paint_at(ui, rect);
+                } else {
+                    ui.painter()
+                        .rect_filled(rect, 0.0, egui::Color32::DARK_GRAY);
+                    ui.painter().text(
+                        rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        "Click 'Render Preview' to render",
+                        egui::FontId::default(),
+                        egui::Color32::WHITE,
+                    );
+                }
+            });
 
-                    ui.end_row();
-                });
+            ui.end_row();
 
             // Bottom buttons
             ui.separator();
