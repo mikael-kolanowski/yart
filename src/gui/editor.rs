@@ -1,7 +1,7 @@
 use log::error;
 use std::path::PathBuf;
 
-use eframe::egui::{self, Context};
+use eframe::egui;
 
 use crate::config::ViewportConfig;
 use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
@@ -9,8 +9,8 @@ use crate::load_scene_from_config;
 use crate::math::{Point3, Vec3};
 use crate::rendering::sampler::RandomSampler;
 
+use super::dialogs::{AddMaterialDialog, AddObjectDialog};
 use super::property_editors;
-use super::utils;
 use super::widgets;
 
 pub struct Editor {
@@ -19,13 +19,9 @@ pub struct Editor {
     selected_object: Option<usize>,
     selected_material: Option<usize>,
 
-    // Dialog state
-    add_object_dialog_open: bool,
-    add_material_dialog_open: bool,
-    pending_object: Option<ObjectConfig>,
-    pending_object_error: Option<String>,
-    pending_material: Option<MaterialConfig>,
-    pending_material_error: Option<String>,
+    // Dialogs
+    add_object_dialog: AddObjectDialog,
+    add_material_dialog: AddMaterialDialog,
 }
 
 impl Editor {
@@ -35,12 +31,8 @@ impl Editor {
             preview_texture: None,
             selected_object: None,
             selected_material: None,
-            add_object_dialog_open: false,
-            add_material_dialog_open: false,
-            pending_object: None,
-            pending_object_error: None,
-            pending_material: None,
-            pending_material_error: None,
+            add_object_dialog: AddObjectDialog::new(),
+            add_material_dialog: AddMaterialDialog::new(),
         }
     }
 
@@ -56,98 +48,6 @@ impl Editor {
         self.preview_texture = None;
         self.selected_object = None;
         self.selected_material = None;
-    }
-
-    fn render_add_object_dialog(&mut self, ctx: &Context) {
-        let mut cancel_clicked = false;
-        let mut add_clicked = false;
-        let default_material = self
-            .config
-            .materials
-            .first()
-            .map(|m| m.name().to_string())
-            .unwrap_or_default();
-
-        egui::Window::new("Add Object")
-            .open(&mut self.add_object_dialog_open)
-            .collapsible(false)
-            .resizable(false)
-            .show(ctx, |ui| {
-                if let Some(ref mut obj) = self.pending_object {
-                    object_type_selector(ui, obj, &default_material);
-                    property_editors::object(ui, obj, &self.config.materials);
-                }
-
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        cancel_clicked = true;
-                    }
-                    if ui.button("Add").clicked() {
-                        add_clicked = true;
-                    }
-                });
-
-                if let Some(ref error) = self.pending_object_error {
-                    ui.colored_label(egui::Color32::RED, error);
-                }
-            });
-
-        if cancel_clicked {
-            self.add_object_dialog_open = false;
-        }
-        if add_clicked {
-            if let Some(ref obj) = self.pending_object {
-                if let Err(e) = utils::validate_object(obj, &self.config.materials) {
-                    self.pending_object_error = Some(e);
-                } else {
-                    self.config.objects.push(obj.clone());
-                    self.add_object_dialog_open = false;
-                }
-            }
-        }
-    }
-
-    fn render_add_material_dialog(&mut self, ctx: &Context) {
-        let mut cancel_clicked = false;
-        let mut add_clicked = false;
-
-        egui::Window::new("Add Material")
-            .open(&mut self.add_material_dialog_open)
-            .collapsible(false)
-            .resizable(false)
-            .show(ctx, |ui| {
-                if let Some(ref mut mat) = self.pending_material {
-                    material_type_selector(ui, mat, &self.config.materials);
-                    property_editors::material(ui, mat);
-                }
-
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        cancel_clicked = true;
-                    }
-                    if ui.button("Add").clicked() {
-                        add_clicked = true;
-                    }
-                });
-
-                if let Some(ref error) = self.pending_material_error {
-                    ui.colored_label(egui::Color32::RED, error);
-                }
-            });
-
-        if cancel_clicked {
-            self.add_material_dialog_open = false;
-        }
-        if add_clicked {
-            if let Some(ref mat) = self.pending_material {
-                if let Err(e) = utils::validate_material(mat, &self.config.materials) {
-                    self.pending_material_error = Some(e);
-                } else {
-                    self.config.materials.push(mat.clone());
-                    self.add_material_dialog_open = false;
-                }
-            }
-        }
     }
 }
 
@@ -226,27 +126,11 @@ impl eframe::App for Editor {
 
             ui.horizontal(|ui| {
                 if ui.button("+ Add object").clicked() {
-                    self.pending_object = Some(ObjectConfig::Sphere {
-                        position: Vec3::new(0.0, 0.0, -1.0),
-                        radius: 1.0,
-                        material: self
-                            .config
-                            .materials
-                            .first()
-                            .map(|m| m.name().to_string())
-                            .unwrap_or_default(),
-                    });
-                    self.pending_object_error = None;
-                    self.add_object_dialog_open = true;
+                    self.add_object_dialog.open(&self.config.materials);
                 }
 
                 if ui.button("+ Add material").clicked() {
-                    self.pending_material = Some(MaterialConfig::Lambertian {
-                        name: utils::new_material_name("lambertian", &self.config.materials),
-                        albedo: Vec3::new(0.5, 0.5, 0.5),
-                    });
-                    self.pending_material_error = None;
-                    self.add_material_dialog_open = true;
+                    self.add_material_dialog.open(&self.config.materials);
                 }
             });
 
@@ -426,91 +310,14 @@ impl eframe::App for Editor {
         });
 
         // Object Dialog
-        if self.add_object_dialog_open {
-            self.render_add_object_dialog(ctx);
+        if let Some(obj) = self.add_object_dialog.show(ctx, &self.config.materials) {
+            self.config.objects.push(obj);
         }
 
         // Material Dialog
-        if self.add_material_dialog_open {
-            self.render_add_material_dialog(ctx);
+        if let Some(mat) = self.add_material_dialog.show(ctx, &self.config.materials) {
+            self.config.materials.push(mat);
         }
-    }
-}
-
-fn object_type_selector(ui: &mut egui::Ui, obj: &mut ObjectConfig, default_material: &str) {
-    let current_type = match obj {
-        ObjectConfig::Sphere { .. } => "sphere",
-        ObjectConfig::Triangle { .. } => "triangle",
-        ObjectConfig::Mesh { .. } => "mesh",
-    };
-    let mut obj_type = current_type.to_string();
-
-    ui.horizontal(|ui| {
-        ui.label("Type:");
-        egui::ComboBox::from_id_salt("object_type_dialog")
-            .selected_text(&obj_type)
-            .show_ui(ui, |ui| {
-                ui.selectable_value(&mut obj_type, "sphere".to_string(), "Sphere");
-                ui.selectable_value(&mut obj_type, "triangle".to_string(), "Triangle");
-                ui.selectable_value(&mut obj_type, "mesh".to_string(), "Mesh");
-            });
-    });
-
-    if obj_type != current_type {
-        *obj = match obj_type.as_str() {
-            "sphere" => ObjectConfig::Sphere {
-                position: Vec3::new(0.0, 0.0, -1.0),
-                radius: 1.0,
-                material: default_material.to_string(),
-            },
-            "mesh" => ObjectConfig::Mesh {
-                path: PathBuf::new(),
-                material: default_material.to_string(),
-            },
-            _ => obj.clone(),
-        };
-    }
-}
-
-fn material_type_selector(
-    ui: &mut egui::Ui,
-    mat: &mut MaterialConfig,
-    existing: &[MaterialConfig],
-) {
-    let current_type = utils::material_label(&mat);
-
-    let mut mat_type = current_type.to_string();
-
-    ui.horizontal(|ui| {
-        ui.label("Type:");
-        egui::ComboBox::from_id_salt("material_type_dialog")
-            .selected_text(&mat_type)
-            .show_ui(ui, |ui| {
-                ui.selectable_value(&mut mat_type, "lambertian".to_string(), "Lambertian");
-                ui.selectable_value(&mut mat_type, "metal".to_string(), "Metal");
-                ui.selectable_value(
-                    &mut mat_type,
-                    "normal_vis".to_string(),
-                    "Normal Visualization",
-                );
-            });
-    });
-
-    if mat_type != current_type {
-        let default_name = utils::new_material_name(&mat_type, existing);
-        *mat = match mat_type.as_str() {
-            "lambertian" => MaterialConfig::Lambertian {
-                name: default_name,
-                albedo: Vec3::new(0.5, 0.5, 0.5),
-            },
-            "metal" => MaterialConfig::Metal {
-                name: default_name,
-                albedo: Vec3::new(0.5, 0.5, 0.5),
-                fuzz: 0.3,
-            },
-            "normal_vis" => MaterialConfig::NormalVisualization { name: default_name },
-            _ => mat.clone(),
-        };
     }
 }
 

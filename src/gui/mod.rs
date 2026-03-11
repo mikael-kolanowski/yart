@@ -1,3 +1,4 @@
+pub mod dialogs;
 pub mod editor;
 pub mod property_editors;
 pub mod utils;
