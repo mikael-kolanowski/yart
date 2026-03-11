@@ -118,27 +118,18 @@ impl Editor {
             self.help_dialog.open();
         }
 
+        if self.shortcuts.is_pressed(ctx, &self.shortcuts.load_scene) {
+            self.handle_load_scene();
+        }
+
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Load Scene").clicked() {
-                        if let Some(path) = rfd::FileDialog::new()
-                            .add_filter("TOML files", &["toml"])
-                            .pick_file()
-                        {
-                            if let Ok(config) = Config::from_path(path.as_path()) {
-                                self.load_config(config);
-                            }
-                        }
+                        self.handle_load_scene();
                     }
                     if ui.button("Save Scene").clicked() {
-                        if let Some(path) = rfd::FileDialog::new().save_file() {
-                            self.config
-                                .save_to_file(path.as_path())
-                                .unwrap_or_else(|err| {
-                                    error!("error while saving config: {err}");
-                                });
-                        }
+                        self.handle_save_scene();
                     }
                     if ui.button("Quit").clicked() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
@@ -361,5 +352,26 @@ impl Editor {
 
         // Help Dialog
         self.help_dialog.show(ctx, &self.shortcuts);
+    }
+
+    fn handle_load_scene(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("TOML files", &["toml"])
+            .pick_file()
+        {
+            if let Ok(config) = Config::from_path(path.as_path()) {
+                self.load_config(config);
+            }
+        }
+    }
+
+    fn handle_save_scene(&mut self) {
+        if let Some(path) = rfd::FileDialog::new().save_file() {
+            self.config
+                .save_to_file(path.as_path())
+                .unwrap_or_else(|err| {
+                    error!("error while saving config: {err}");
+                });
+        }
     }
 }

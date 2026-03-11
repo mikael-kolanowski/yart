@@ -15,6 +15,8 @@ impl Shortcut {
 pub struct Shortcuts {
     pub render_preview: Shortcut,
     pub show_help: Shortcut,
+    pub load_scene: Shortcut,
+    pub save_scene: Shortcut,
 }
 
 impl Shortcuts {
@@ -24,9 +26,19 @@ impl Shortcuts {
                 egui::Modifiers::COMMAND,
                 egui::Key::R,
             )),
+
             show_help: Shortcut::new(egui::KeyboardShortcut::new(
                 egui::Modifiers::COMMAND,
                 egui::Key::F1,
+            )),
+
+            load_scene: Shortcut::new(egui::KeyboardShortcut::new(
+                egui::Modifiers::COMMAND,
+                egui::Key::O,
+            )),
+            save_scene: Shortcut::new(egui::KeyboardShortcut::new(
+                egui::Modifiers::COMMAND,
+                egui::Key::S,
             )),
         }
     }
