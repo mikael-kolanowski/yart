@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use eframe::egui;
 
-use crate::config::ViewportConfig;
 use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
 use crate::load_scene_from_config;
 use crate::math::{Point3, Vec3};
@@ -13,8 +12,14 @@ use super::dialogs::{AddMaterialDialog, AddObjectDialog};
 use super::property_editors;
 use super::widgets;
 
+pub struct ViewportRendererConfig {
+    pub samples_per_pixel: u32,
+    pub max_bounces: u32,
+}
+
 pub struct Editor {
     config: Config,
+    viewport_renderer: ViewportRendererConfig,
     preview_texture: Option<egui::TextureHandle>,
     selected_object: Option<usize>,
     selected_material: Option<usize>,
@@ -28,6 +33,10 @@ impl Editor {
     pub fn new() -> Self {
         Self {
             config: default_config(),
+            viewport_renderer: ViewportRendererConfig {
+                samples_per_pixel: 10,
+                max_bounces: 10,
+            },
             preview_texture: None,
             selected_object: None,
             selected_material: None,
@@ -80,7 +89,6 @@ fn default_config() -> Config {
             from: Vec3::new(1.0, 1.0, 1.0),
             to: Vec3::new(0.5, 0.7, 1.0),
         },
-        viewport: ViewportConfig::default(),
     }
 }
 
@@ -248,7 +256,7 @@ impl eframe::App for Editor {
                 egui::CollapsingHeader::new("Viewport")
                     .default_open(true)
                     .show(ui, |ui| {
-                        property_editors::viewport(ui, &mut self.config.viewport);
+                        property_editors::viewport(ui, &mut self.viewport_renderer);
                     });
             });
 
@@ -265,12 +273,10 @@ impl eframe::App for Editor {
                     ui.set_min_size(egui::vec2(600.0, 400.0));
 
                     // Preview viewport
+                    let preview_width = 400.0;
+                    let preview_height = preview_width / self.config.camera.aspect_ratio;
                     ui.vertical(|ui| {
-                        let preview_size = egui::vec2(
-                            (self.config.viewport.width as f32)
-                                * (self.config.camera.aspect_ratio as f32),
-                            self.config.viewport.width as f32,
-                        );
+                        let preview_size = egui::vec2(preview_width as f32, preview_height as f32);
 
                         let (rect, _response) =
                             ui.allocate_exact_size(preview_size, egui::Sense::click());
@@ -298,7 +304,7 @@ impl eframe::App for Editor {
             ui.separator();
             ui.horizontal(|ui| {
                 if ui.button("Render Preview").clicked() {
-                    if let Some(color_image) = render_preview(&self.config) {
+                    if let Some(color_image) = render_preview(&self, &self.config) {
                         self.preview_texture = Some(ctx.load_texture(
                             "preview",
                             color_image,
@@ -321,9 +327,7 @@ impl eframe::App for Editor {
     }
 }
 
-fn render_preview(config: &Config) -> Option<egui::ColorImage> {
-    let viewport = &config.viewport;
-
+fn render_preview(editor: &Editor, config: &Config) -> Option<egui::ColorImage> {
     let mut rng = rand::rng();
     let mut sampler = RandomSampler::new(&mut rng);
 
@@ -335,17 +339,16 @@ fn render_preview(config: &Config) -> Option<egui::ColorImage> {
             look_at: config.camera.look_at,
         },
         renderer: crate::config::RendererConfig {
-            samples_per_pixel: viewport.samples_per_pixel,
-            max_bounces: viewport.max_bounces,
+            samples_per_pixel: editor.viewport_renderer.samples_per_pixel,
+            max_bounces: editor.viewport_renderer.max_bounces,
         },
         image: crate::config::ImageConfig {
-            width: viewport.width,
+            width: config.image.width,
             output: PathBuf::from("/dev/null"),
         },
         materials: config.materials.clone(),
         objects: config.objects.clone(),
         sky: config.sky.clone(),
-        viewport: ViewportConfig::default(),
     };
 
     let (camera, world, renderer) = load_scene_from_config(&preview_config, &PathBuf::from("."));

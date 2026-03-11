@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use eframe::egui::{self};
 
-use crate::{math::Vec3, MaterialConfig, ObjectConfig, ViewportConfig};
+use crate::{MaterialConfig, ObjectConfig, gui::editor::ViewportRendererConfig, math::Vec3};
 
 use super::widgets;
 
@@ -233,15 +233,11 @@ pub fn sky(ui: &mut egui::Ui, sky: &mut crate::config::SkyConfig) {
     }
 }
 
-pub fn viewport(ui: &mut egui::Ui, viewport: &mut ViewportConfig) {
+pub fn viewport(ui: &mut egui::Ui, viewport: &mut ViewportRendererConfig) {
     egui::Grid::new("viewport_config_grid")
         .num_columns(2)
         .striped(true)
         .show(ui, |ui| {
-            ui.label("Preview Width:");
-            ui.add(egui::DragValue::new(&mut viewport.width).speed(10.0));
-            ui.end_row();
-
             ui.label("Preview Samples:");
             ui.add(egui::DragValue::new(&mut viewport.samples_per_pixel).speed(1.0));
             ui.end_row();

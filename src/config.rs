@@ -43,8 +43,6 @@ pub struct Config {
     pub materials: Vec<MaterialConfig>,
     pub objects: Vec<ObjectConfig>,
     pub sky: SkyConfig,
-    #[serde(default)]
-    pub viewport: ViewportConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -77,24 +75,6 @@ pub struct RendererConfig {
 pub struct ImageConfig {
     pub width: u32,
     pub output: PathBuf,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(default)]
-pub struct ViewportConfig {
-    pub width: u32,
-    pub samples_per_pixel: u32,
-    pub max_bounces: u32,
-}
-
-impl Default for ViewportConfig {
-    fn default() -> Self {
-        Self {
-            width: 200,
-            samples_per_pixel: 5,
-            max_bounces: 6,
-        }
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
