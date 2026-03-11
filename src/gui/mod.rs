@@ -1,7 +1,7 @@
-pub mod dialogs;
-pub mod editor;
-pub mod property_editors;
-pub mod utils;
-pub mod widgets;
+mod dialogs;
+mod editor;
+mod property_editors;
+mod utils;
+mod widgets;
 
 pub use editor::Editor;
