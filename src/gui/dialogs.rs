@@ -115,6 +115,7 @@ impl AddObjectDialog {
                     property_editors::object(ui, obj, materials);
                 }
 
+                ui.separator();
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
                         close_requested = true;
@@ -189,6 +190,7 @@ impl AddMaterialDialog {
                     property_editors::material(ui, mat);
                 }
 
+                ui.separator();
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
                         close_requested = true;
