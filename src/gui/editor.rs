@@ -65,11 +65,25 @@ impl Editor {
         self.selected_object = None;
         self.selected_material = None;
     }
-    fn render_preview(&self) -> Option<egui::ColorImage> {
+
+    fn render_preview(&self, available_size: egui::Rect) -> Option<egui::ColorImage> {
         let mut rng = rand::rng();
         let mut sampler = RandomSampler::new(&mut rng);
 
-        let (camera, world, renderer) = load_scene_from_config(&self.config, &PathBuf::from("."));
+        let preview_width = available_size.max.x;
+        let preview_height = available_size.max.y;
+        let preview_aspect_ratio = (preview_width / preview_height) as f64;
+
+        let preview_config = Config {
+            camera: crate::CameraConfig {
+                aspect_ratio: preview_aspect_ratio,
+                ..self.config.camera.clone()
+            },
+            ..self.config.clone()
+        };
+
+        let (camera, world, renderer) =
+            load_scene_from_config(&preview_config, &PathBuf::from("."));
 
         let image = renderer.render(&world, &camera, &mut sampler, false);
 
@@ -284,36 +298,40 @@ impl Editor {
         });
     }
 
-    fn render_preview_to_texture(&mut self, ctx: &egui::Context) {
-        if let Some(color_image) = self.render_preview() {
+    fn preview_size(&mut self, ui: &mut egui::Ui) -> egui::Rect {
+        egui::Rect::from_two_pos(
+            egui::Pos2::new(0.0, 0.0),
+            egui::Pos2::new(ui.available_width(), ui.available_height()),
+        )
+    }
+
+    fn render_preview_to_texture(&mut self, ctx: &egui::Context, available_size: egui::Rect) {
+        if let Some(color_image) = self.render_preview(available_size) {
             self.preview_texture =
                 Some(ctx.load_texture("preview", color_image, egui::TextureOptions::NEAREST));
         }
     }
 
     fn ui_central_panel(&mut self, ctx: &egui::Context) {
-        // Check for keyboard shortcuts
-        if self
-            .shortcuts
-            .is_pressed(ctx, &self.shortcuts.render_preview)
-        {
-            self.render_preview_to_texture(ctx);
-        }
-
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.set_min_size(egui::vec2(600.0, 400.0));
+            // Check for keyboard shortcuts
+            if self
+                .shortcuts
+                .is_pressed(ctx, &self.shortcuts.render_preview)
+            {
+                let preview_size = self.preview_size(ui);
+                self.render_preview_to_texture(ctx, preview_size);
+            }
 
             // Preview viewport
-            let preview_width = 800.0;
-            let preview_height = preview_width / self.config.camera.aspect_ratio;
+            let preview_size = self.preview_size(ui);
             ui.vertical(|ui| {
-                let preview_size = egui::vec2(preview_width as f32, preview_height as f32);
-
-                let (rect, _response) = ui.allocate_exact_size(preview_size, egui::Sense::click());
+                let (rect, _response) =
+                    ui.allocate_exact_size(preview_size.max.to_vec2(), egui::Sense::click());
 
                 if let Some(ref texture) = self.preview_texture {
                     let image = egui::Image::new(texture);
-                    image.max_size(rect.size()).paint_at(ui, rect);
+                    image.paint_at(ui, rect);
                 } else {
                     ui.painter()
                         .rect_filled(rect, 0.0, egui::Color32::DARK_GRAY);
@@ -328,14 +346,6 @@ impl Editor {
             });
 
             ui.end_row();
-
-            // Bottom buttons
-            ui.separator();
-            ui.horizontal(|ui| {
-                if ui.button("Render Preview (Ctrl+R)").clicked() {
-                    self.render_preview_to_texture(ctx);
-                }
-            });
         });
     }
 
