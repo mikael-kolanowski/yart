@@ -77,7 +77,7 @@ pub struct ImageConfig {
     pub output: PathBuf,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(tag = "type")]
 pub enum SkyConfig {
     #[serde(rename = "linear-gradient")]
@@ -104,7 +104,7 @@ pub enum SkyConfig {
     },
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum MaterialConfig {
     #[serde(rename = "lambertian")]
@@ -131,7 +131,7 @@ pub enum MaterialConfig {
     NormalVisualization { name: String },
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum ObjectConfig {
     #[serde(rename = "sphere")]
@@ -187,6 +187,24 @@ impl MaterialConfig {
             MaterialConfig::Lambertian { name, .. } => name,
             MaterialConfig::Metal { name, .. } => name,
             MaterialConfig::NormalVisualization { name } => name,
+        }
+    }
+
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            MaterialConfig::Lambertian { .. } => "Lambertian",
+            MaterialConfig::Metal { .. } => "Metal",
+            MaterialConfig::NormalVisualization { .. } => "Normal Visualization",
+        }
+    }
+}
+
+impl ObjectConfig {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            ObjectConfig::Sphere { .. } => "Sphere",
+            ObjectConfig::Triangle { .. } => "Triangle",
+            ObjectConfig::Mesh { .. } => "Mesh",
         }
     }
 }

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use eframe::egui::{self};
 
-use crate::{MaterialConfig, ObjectConfig, gui::editor::ViewportRendererConfig, math::Vec3};
+use crate::{MaterialConfig, ObjectConfig, gui::editor::ViewportRendererConfig};
 
 use super::widgets;
 
@@ -178,26 +178,32 @@ pub fn image(ui: &mut egui::Ui, image: &mut crate::config::ImageConfig) {
 }
 
 pub fn sky(ui: &mut egui::Ui, sky: &mut crate::config::SkyConfig) {
-    let current_type = match sky {
-        crate::config::SkyConfig::LinearGradient { .. } => "linear-gradient",
-        crate::config::SkyConfig::Solid { .. } => "solid",
-    };
-    let mut sky_type = current_type.to_string();
-
     egui::Grid::new("sky_config_grid")
         .num_columns(2)
         .striped(true)
         .show(ui, |ui| {
             ui.label("Type:");
             egui::ComboBox::from_id_salt("sky_type")
-                .selected_text(&sky_type)
+                .selected_text(match sky {
+                    crate::config::SkyConfig::LinearGradient { .. } => "Linear Gradient",
+                    crate::config::SkyConfig::Solid { .. } => "Solid Color",
+                })
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
-                        &mut sky_type,
-                        "linear-gradient".to_string(),
+                        sky,
+                        crate::config::SkyConfig::LinearGradient {
+                            from: crate::math::Vec3::new(1.0, 1.0, 1.0),
+                            to: crate::math::Vec3::new(0.5, 0.7, 1.0),
+                        },
                         "Linear Gradient",
                     );
-                    ui.selectable_value(&mut sky_type, "solid".to_string(), "Solid Color");
+                    ui.selectable_value(
+                        sky,
+                        crate::config::SkyConfig::Solid {
+                            color: crate::math::Vec3::new(0.5, 0.7, 1.0),
+                        },
+                        "Solid Color",
+                    );
                 });
             ui.end_row();
 
@@ -218,19 +224,6 @@ pub fn sky(ui: &mut egui::Ui, sky: &mut crate::config::SkyConfig) {
                 }
             }
         });
-
-    if sky_type != current_type {
-        *sky = match sky_type.as_str() {
-            "linear-gradient" => crate::config::SkyConfig::LinearGradient {
-                from: Vec3::new(1.0, 1.0, 1.0),
-                to: Vec3::new(0.5, 0.7, 1.0),
-            },
-            "solid" => crate::config::SkyConfig::Solid {
-                color: Vec3::new(0.5, 0.7, 1.0),
-            },
-            _ => sky.clone(),
-        };
-    }
 }
 
 pub fn viewport(ui: &mut egui::Ui, viewport: &mut ViewportRendererConfig) {

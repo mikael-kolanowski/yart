@@ -5,7 +5,7 @@ use super::property_editors;
 use super::shortcuts::Shortcuts;
 use super::utils;
 use crate::config::{MaterialConfig, ObjectConfig};
-use crate::math::Vec3;
+use crate::math::{Point3, Vec3};
 
 pub struct HelpDialog {
     open: bool,
@@ -223,13 +223,6 @@ impl AddMaterialDialog {
 }
 
 fn object_type_selector(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: &[MaterialConfig]) {
-    let current_type = match obj {
-        ObjectConfig::Sphere { .. } => "sphere",
-        ObjectConfig::Triangle { .. } => "triangle",
-        ObjectConfig::Mesh { .. } => "mesh",
-    };
-    let mut obj_type = current_type.to_string();
-
     let default_material = materials
         .first()
         .map(|m| m.name().to_string())
@@ -238,27 +231,37 @@ fn object_type_selector(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: &[
     ui.horizontal(|ui| {
         ui.label("Type:");
         egui::ComboBox::from_id_salt("object_type_dialog")
-            .selected_text(&obj_type)
+            .selected_text(obj.type_name())
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut obj_type, "sphere".to_string(), "Sphere");
-                ui.selectable_value(&mut obj_type, "mesh".to_string(), "Mesh");
+                ui.selectable_value(
+                    obj,
+                    ObjectConfig::Sphere {
+                        position: Vec3::new(0.0, 0.0, -1.0),
+                        radius: 1.0,
+                        material: default_material.clone(),
+                    },
+                    "Sphere",
+                );
+                ui.selectable_value(
+                    obj,
+                    ObjectConfig::Mesh {
+                        path: PathBuf::new(),
+                        material: default_material.clone(),
+                    },
+                    "Mesh",
+                );
+                ui.selectable_value(
+                    obj,
+                    ObjectConfig::Triangle {
+                        p1: Point3::new(-1.0, 0.0, -1.0),
+                        p2: Point3::new(1.0, 0.0, -1.0),
+                        p3: Point3::new(0.0, 2.0, -1.0),
+                        material: default_material.clone(),
+                    },
+                    "Triangle",
+                );
             });
     });
-
-    if obj_type != current_type {
-        *obj = match obj_type.as_str() {
-            "sphere" => ObjectConfig::Sphere {
-                position: Vec3::new(0.0, 0.0, -1.0),
-                radius: 1.0,
-                material: default_material,
-            },
-            "mesh" => ObjectConfig::Mesh {
-                path: PathBuf::new(),
-                material: default_material,
-            },
-            _ => obj.clone(),
-        };
-    }
 }
 
 fn material_type_selector(
@@ -266,39 +269,43 @@ fn material_type_selector(
     mat: &mut MaterialConfig,
     existing: &[MaterialConfig],
 ) {
-    let current_type = utils::material_label(&mat);
-
-    let mut mat_type = current_type.to_string();
-
     ui.horizontal(|ui| {
         ui.label("Type:");
         egui::ComboBox::from_id_salt("material_type_dialog")
-            .selected_text(&mat_type)
+            .selected_text(mat.display_name())
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut mat_type, "lambertian".to_string(), "Lambertian");
-                ui.selectable_value(&mut mat_type, "metal".to_string(), "Metal");
+                // Lambertian option
+                let lambertian_name = utils::new_material_name("lambertian", existing);
                 ui.selectable_value(
-                    &mut mat_type,
-                    "normal_vis".to_string(),
+                    mat,
+                    MaterialConfig::Lambertian {
+                        name: lambertian_name,
+                        albedo: Vec3::new(0.5, 0.5, 0.5),
+                    },
+                    "Lambertian",
+                );
+
+                // Metal option
+                let metal_name = utils::new_material_name("metal", existing);
+                ui.selectable_value(
+                    mat,
+                    MaterialConfig::Metal {
+                        name: metal_name,
+                        albedo: Vec3::new(0.5, 0.5, 0.5),
+                        fuzz: 0.3,
+                    },
+                    "Metal",
+                );
+
+                // Normal Visualization option
+                let normal_vis_name = utils::new_material_name("normal_vis", existing);
+                ui.selectable_value(
+                    mat,
+                    MaterialConfig::NormalVisualization {
+                        name: normal_vis_name,
+                    },
                     "Normal Visualization",
                 );
             });
     });
-
-    if mat_type != current_type {
-        let default_name = utils::new_material_name(&mat_type, existing);
-        *mat = match mat_type.as_str() {
-            "lambertian" => MaterialConfig::Lambertian {
-                name: default_name,
-                albedo: Vec3::new(0.5, 0.5, 0.5),
-            },
-            "metal" => MaterialConfig::Metal {
-                name: default_name,
-                albedo: Vec3::new(0.5, 0.5, 0.5),
-                fuzz: 0.3,
-            },
-            "normal_vis" => MaterialConfig::NormalVisualization { name: default_name },
-            _ => mat.clone(),
-        };
-    }
 }

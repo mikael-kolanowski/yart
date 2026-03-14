@@ -5,7 +5,7 @@ use crate::{
     math::{Point3, Vec3},
 };
 
-pub fn material_label(mat: &MaterialConfig) -> String {
+fn material_label(mat: &MaterialConfig) -> String {
     match mat {
         MaterialConfig::Lambertian { .. } => "lambertian".into(),
         MaterialConfig::Metal { .. } => "metal".into(),
