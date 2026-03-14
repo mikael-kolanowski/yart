@@ -2,6 +2,8 @@ use std::fs::File;
 use std::path::Path;
 use std::{env, process};
 
+use eframe::egui;
+
 use log::error;
 use log::info;
 use yart::{Config, load_scene_from_config};
@@ -12,33 +14,29 @@ fn print_usage() {
     println!("yart --editor [config.toml]");
 }
 
-fn main() {
-    colog::init();
+fn run_gui(args: &Vec<String>) {
+    let config_path = args.get(2).map(|s| s.as_str());
 
-    let args: Vec<String> = env::args().collect();
+    let editor = {
+        if let Some(path) = config_path {
+            let config = match Config::from_path(Path::new(path)) {
+                Ok(config) => config,
+                Err(err) => {
+                    error!("could not read config: {err}");
+                    process::exit(1);
+                }
+            };
+            yart::gui::Editor::with_config(&config)
+        } else {
+            yart::gui::Editor::new()
+        }
+    };
+    let mut options = eframe::NativeOptions::default();
+    options.viewport.inner_size = Some(egui::vec2(1400.0, 900.0)); // Wider and taller
+    let _ = eframe::run_native("YART Editor", options, Box::new(|_cc| Ok(Box::new(editor))));
+}
 
-    if args.len() > 1 && args[1] == "--editor" {
-        let config_path = args.get(2).map(|s| s.as_str());
-
-        let editor = {
-            if let Some(path) = config_path {
-                let config = match Config::from_path(Path::new(path)) {
-                    Ok(config) => config,
-                    Err(err) => {
-                        error!("could not read config: {err}");
-                        process::exit(1);
-                    }
-                };
-                yart::gui::Editor::with_config(&config)
-            } else {
-                yart::gui::Editor::new()
-            }
-        };
-
-        let options = eframe::NativeOptions::default();
-        let _ = eframe::run_native("YART Editor", options, Box::new(|_cc| Ok(Box::new(editor))));
-    }
-
+fn run_cli(args: &Vec<String>) {
     let config_path = args.get(1).unwrap_or_else(|| {
         error!("no config file supplied");
         print_usage();
@@ -60,4 +58,16 @@ fn main() {
     let mut output_file = File::create(&config.image.output).expect("Unable to open output file");
     image.write_ppm(&mut output_file);
     info!("image written to {:?}", config.image.output);
+}
+
+fn main() {
+    colog::init();
+
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() > 1 && args[1] == "--editor" {
+        run_gui(&args);
+    } else {
+        run_cli(&args);
+    }
 }
