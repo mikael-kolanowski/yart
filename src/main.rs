@@ -1,31 +1,49 @@
 use std::fs::File;
 use std::path::Path;
-use std::{env, fs, process};
+use std::{env, process};
+
+use eframe::egui;
 
 use log::error;
 use log::info;
-use yart::load_scene_from_config;
-
-fn read_config(path: &str) -> Result<yart::Config, Box<dyn std::error::Error>> {
-    let contents = fs::read_to_string(path)?;
-    let config: yart::Config = toml::from_str(&contents)?;
-    Ok(config)
-}
+use yart::{Config, load_scene_from_config};
 
 fn print_usage() {
     println!("Usage: ");
     println!("yart <config.toml>");
+    println!("yart --editor [config.toml]");
 }
 
-fn main() {
-    colog::init();
-    let config_path = env::args().nth(1).unwrap_or_else(|| {
+fn run_gui(args: &Vec<String>) {
+    let config_path = args.get(2).map(|s| s.as_str());
+
+    let editor = {
+        if let Some(path) = config_path {
+            let config = match Config::from_path(Path::new(path)) {
+                Ok(config) => config,
+                Err(err) => {
+                    error!("could not read config: {err}");
+                    process::exit(1);
+                }
+            };
+            yart::gui::Editor::with_config(&config)
+        } else {
+            yart::gui::Editor::new()
+        }
+    };
+    let mut options = eframe::NativeOptions::default();
+    options.viewport.inner_size = Some(egui::vec2(1400.0, 900.0)); // Wider and taller
+    let _ = eframe::run_native("YART Editor", options, Box::new(|_cc| Ok(Box::new(editor))));
+}
+
+fn run_cli(args: &Vec<String>) {
+    let config_path = args.get(1).unwrap_or_else(|| {
         error!("no config file supplied");
         print_usage();
         process::exit(1);
     });
 
-    let config = read_config(&config_path).unwrap_or_else(|err| {
+    let config = Config::from_path(&Path::new(config_path)).unwrap_or_else(|err| {
         error!("could not read config: {err}");
         process::exit(1);
     });
@@ -40,4 +58,16 @@ fn main() {
     let mut output_file = File::create(&config.image.output).expect("Unable to open output file");
     image.write_ppm(&mut output_file);
     info!("image written to {:?}", config.image.output);
+}
+
+fn main() {
+    colog::init();
+
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() > 1 && args[1] == "--editor" {
+        run_gui(&args);
+    } else {
+        run_cli(&args);
+    }
 }

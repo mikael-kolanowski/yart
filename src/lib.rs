@@ -1,5 +1,6 @@
 pub mod color;
 pub mod config;
+pub mod gui;
 pub mod math;
 pub mod mesh;
 pub mod progressbar;
