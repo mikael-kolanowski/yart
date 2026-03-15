@@ -18,6 +18,44 @@ pub trait Hittable {
     fn bounding_box(&self) -> AABB;
 }
 
+pub struct Hittables {
+    pub objects: Vec<Box<dyn Hittable>>,
+    bounding_box: AABB,
+}
+
+impl Hittables {
+    pub fn new() -> Self {
+        Self {
+            objects: Vec::new(),
+            bounding_box: AABB::new(),
+        }
+    }
+
+    pub fn add(&mut self, object: Box<dyn Hittable>) {
+        self.bounding_box = AABB::from_boxes(self.bounding_box, object.bounding_box());
+        self.objects.push(object);
+    }
+}
+
+impl Hittable for Hittables {
+    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+        let mut closest = ray_t.max;
+        let mut hit_anything = None;
+
+        for obj in &self.objects {
+            if let Some(hit) = obj.check_intersection(ray, Interval::new(ray_t.min, closest)) {
+                closest = hit.t;
+                hit_anything = Some(hit)
+            }
+        }
+        hit_anything
+    }
+
+    fn bounding_box(&self) -> AABB {
+        self.bounding_box
+    }
+}
+
 pub struct Sphere {
     pub center: Point3,
     pub radius: f64,
@@ -250,6 +288,8 @@ impl AABB {
         true
     }
 }
+
+pub struct BVHNode {}
 
 #[cfg(test)]
 mod tests {
