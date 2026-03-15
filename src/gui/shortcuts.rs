@@ -1,6 +1,7 @@
 use eframe::egui;
 
 /// Represents a keyboard shortcut
+#[derive(Clone)]
 pub struct Shortcut {
     pub shortcut: egui::KeyboardShortcut,
     pub description: String,

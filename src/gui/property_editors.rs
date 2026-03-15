@@ -27,7 +27,7 @@ pub fn object(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: &[MaterialCo
                 ui.end_row();
 
                 ui.label("Radius:");
-                ui.add(egui::DragValue::new(radius).speed(0.1));
+                ui.add(egui::DragValue::new(radius).range(0.0..=1e9).speed(0.1));
                 ui.end_row();
 
                 ui.label("Material:");
@@ -124,7 +124,11 @@ pub fn camera(ui: &mut egui::Ui, camera: &mut crate::config::CameraConfig) {
         .striped(true)
         .show(ui, |ui| {
             ui.label("Aspect Ratio:");
-            ui.add(egui::DragValue::new(&mut camera.aspect_ratio).speed(0.1));
+            ui.add(
+                egui::DragValue::new(&mut camera.aspect_ratio)
+                    .range(0.25..=4.0)
+                    .speed(0.1),
+            );
             ui.end_row();
 
             ui.label("Field of View:");

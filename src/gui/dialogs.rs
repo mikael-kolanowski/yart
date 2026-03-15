@@ -5,7 +5,7 @@ use super::property_editors;
 use super::shortcuts::Shortcuts;
 use super::utils;
 use crate::config::{MaterialConfig, ObjectConfig};
-use crate::math::{Point3, Vec3};
+use crate::math::Vec3;
 
 pub struct HelpDialog {
     open: bool,
@@ -37,12 +37,11 @@ impl HelpDialog {
                     .num_columns(2)
                     .spacing([20.0, 5.0])
                     .show(ui, |ui| {
-                        let shortcuts = Shortcuts::new();
                         for shortcut in vec![
-                            shortcuts.show_help,
-                            shortcuts.render_preview,
-                            shortcuts.load_scene,
-                            shortcuts.save_scene,
+                            shortcuts.show_help.clone(),
+                            shortcuts.render_preview.clone(),
+                            shortcuts.load_scene.clone(),
+                            shortcuts.save_scene.clone(),
                         ] {
                             let display_shortcut = ctx.format_shortcut(&shortcut.shortcut);
 
@@ -249,16 +248,6 @@ fn object_type_selector(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: &[
                         material: default_material.clone(),
                     },
                     "Mesh",
-                );
-                ui.selectable_value(
-                    obj,
-                    ObjectConfig::Triangle {
-                        p1: Point3::new(-1.0, 0.0, -1.0),
-                        p2: Point3::new(1.0, 0.0, -1.0),
-                        p3: Point3::new(0.0, 2.0, -1.0),
-                        material: default_material.clone(),
-                    },
-                    "Triangle",
                 );
             });
     });
