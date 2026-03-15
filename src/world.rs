@@ -3,20 +3,22 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::{collections::HashMap, sync::Arc};
 
-use log::{info, warn};
+use log::warn;
 
 use crate::color::Color;
-use crate::math::{Point3, Sphere, Triangle, geometry::Hittables};
+use crate::math::BVH;
+use crate::math::Primitive;
+use crate::math::{Point3, Sphere, Triangle};
 use crate::mesh::Mesh;
 use crate::rendering::material::{Dielectric, DummyMaterial, Lambertian, Metal, NormalVisualizer};
+use crate::rendering::Material;
 use crate::rendering::sky::SkyBox;
-use crate::{math::Hittable, rendering::Material};
 
 use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
 use crate::rendering::sky::{LinearGradientSkyBox, SolidColorSkyBox};
 
 pub struct World {
-    pub objects: Hittables,
+    pub bvh: BVH,
     pub skybox: Box<dyn SkyBox>,
 }
 
@@ -45,7 +47,7 @@ impl World {
             };
         }
 
-        let mut objects = Hittables::new();
+        let mut primitives: Vec<Primitive> = Vec::new();
         for object_config in &config.objects {
             match object_config {
                 ObjectConfig::Sphere {
@@ -57,7 +59,7 @@ impl World {
                         warn!("material '{material}' could not be resolved");
                         &fallback_material
                     });
-                    objects.add(Box::new(Sphere {
+                    primitives.push(Primitive::Sphere(Sphere {
                         center: Point3(*position),
                         radius: *radius,
                         material: material.clone(),
@@ -73,7 +75,7 @@ impl World {
                         warn!("material '{material}' could not be resolved");
                         &fallback_material
                     });
-                    objects.add(Box::new(Triangle {
+                    primitives.push(Primitive::Triangle(Triangle {
                         p1: *p1,
                         p2: *p2,
                         p3: *p3,
@@ -92,7 +94,7 @@ impl World {
                         }
                         Ok(mesh) => {
                             for tri in mesh.triangles {
-                                objects.add(Box::new(tri));
+                                primitives.push(Primitive::Triangle(tri));
                             }
                         }
                     }
@@ -100,10 +102,11 @@ impl World {
             }
         }
 
-        info!("world bounding box: {:?}", objects.bounding_box());
         let skybox = build_skybox(&config.sky);
 
-        World { objects, skybox }
+        let bvh = BVH::build(primitives);
+
+        World { bvh, skybox }
     }
 }
 
@@ -137,7 +140,7 @@ fn build_skybox(config: &SkyConfig) -> Box<dyn SkyBox> {
 impl Default for World {
     fn default() -> Self {
         Self {
-            objects: Hittables::new(),
+            bvh: BVH::build(Vec::new()),
             skybox: Box::new(SolidColorSkyBox {
                 color: Color::WHITE,
             }),

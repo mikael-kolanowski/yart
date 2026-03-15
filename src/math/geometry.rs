@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::sync::Arc;
 
 use super::interval::Interval;
@@ -16,44 +17,6 @@ pub struct HitInfo {
 pub trait Hittable {
     fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
     fn bounding_box(&self) -> AABB;
-}
-
-pub struct Hittables {
-    pub objects: Vec<Box<dyn Hittable>>,
-    bounding_box: AABB,
-}
-
-impl Hittables {
-    pub fn new() -> Self {
-        Self {
-            objects: Vec::new(),
-            bounding_box: AABB::new(),
-        }
-    }
-
-    pub fn add(&mut self, object: Box<dyn Hittable>) {
-        self.bounding_box = AABB::from_boxes(self.bounding_box, object.bounding_box());
-        self.objects.push(object);
-    }
-}
-
-impl Hittable for Hittables {
-    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
-        let mut closest = ray_t.max;
-        let mut hit_anything = None;
-
-        for obj in &self.objects {
-            if let Some(hit) = obj.check_intersection(ray, Interval::new(ray_t.min, closest)) {
-                closest = hit.t;
-                hit_anything = Some(hit)
-            }
-        }
-        hit_anything
-    }
-
-    fn bounding_box(&self) -> AABB {
-        self.bounding_box
-    }
 }
 
 pub struct Sphere {
@@ -176,26 +139,30 @@ impl Hittable for Triangle {
     }
 
     fn bounding_box(&self) -> AABB {
+        let padding = 1e-4;
         let x = Interval::new(
             self.p1.0.x.min(self.p2.0.x).min(self.p3.0.x),
             self.p1.0.x.max(self.p2.0.x).max(self.p3.0.x),
-        );
+        )
+        .expand(padding);
 
         let y = Interval::new(
             self.p1.0.y.min(self.p2.0.y).min(self.p3.0.y),
             self.p1.0.y.max(self.p2.0.y).max(self.p3.0.y),
-        );
+        )
+        .expand(padding);
 
         let z = Interval::new(
             self.p1.0.z.min(self.p2.0.z).min(self.p3.0.z),
             self.p1.0.z.max(self.p2.0.z).max(self.p3.0.z),
-        );
+        )
+        .expand(padding);
 
         AABB { x, y, z }
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct AABB {
     x: Interval,
     y: Interval,
@@ -238,6 +205,14 @@ impl AABB {
         Self { x, y, z }
     }
 
+    pub fn longest_axis(&self) -> u32 {
+        if self.x.size() > self.y.size() {
+            if self.x.size() > self.z.size() { 0 } else { 2 }
+        } else {
+            if self.y.size() > self.z.size() { 1 } else { 2 }
+        }
+    }
+
     pub fn from_boxes(a: Self, b: Self) -> Self {
         let x = Interval::from(a.x, b.x);
         let y = Interval::from(a.y, b.y);
@@ -255,7 +230,9 @@ impl AABB {
     }
 
     pub fn hit(&self, ray: &Ray, ray_t: Interval) -> bool {
-        let t = ray_t;
+        let mut min = ray_t.min;
+        let mut max = ray_t.max;
+
         for axis in 0..=2 {
             let interval = self.axis_interval(axis);
             let origin = ray.origin.0.axis(axis);
@@ -271,17 +248,22 @@ impl AABB {
                 continue;
             }
 
-            let adinv = 1.0 / direction;
-            let mut t0 = (interval.min - origin) * adinv;
-            let mut t1 = (interval.max - origin) * adinv;
+            let inv_d = 1.0 / direction;
+            let mut t0 = (interval.min - origin) * inv_d;
+            let mut t1 = (interval.max - origin) * inv_d;
 
-            if t0 < t1 {
-                if t0 > t1 {
-                    std::mem::swap(&mut t0, &mut t1);
-                }
+            if inv_d < 0.0 {
+                std::mem::swap(&mut t0, &mut t1);
             }
 
-            if t.max <= t.min {
+            if t0 > min {
+                min = t0
+            }
+            if t1 < max {
+                max = t1
+            }
+
+            if max <= min {
                 return false;
             }
         }
@@ -289,7 +271,182 @@ impl AABB {
     }
 }
 
-pub struct BVHNode {}
+pub enum Primitive {
+    Sphere(Sphere),
+    Triangle(Triangle),
+}
+
+impl Hittable for Primitive {
+    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+        match &self {
+            Primitive::Sphere(sphere) => sphere.check_intersection(ray, ray_t),
+            Primitive::Triangle(triangle) => triangle.check_intersection(ray, ray_t),
+        }
+    }
+
+    fn bounding_box(&self) -> AABB {
+        match &self {
+            Primitive::Sphere(sphere) => sphere.bounding_box(),
+            Primitive::Triangle(triangle) => triangle.bounding_box(),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum BVHNodeKind {
+    Inner { left: u32, right: u32 },
+    Leaf { start: u32, count: u32 },
+}
+
+#[derive(Clone, Copy)]
+pub struct BVHNode {
+    pub bounding_box: AABB,
+    kind: BVHNodeKind,
+}
+
+pub struct BVH {
+    pub nodes: Vec<BVHNode>,
+    pub primitives: Vec<Primitive>,
+    root: usize,
+}
+
+impl BVH {
+    fn build_helper(
+        primitives: &mut Vec<Primitive>,
+        nodes: &mut Vec<BVHNode>,
+        range: Range<usize>,
+        depth: u32,
+    ) -> usize {
+        let count = (range.end - range.start) as u32;
+        let mut bounding_box = AABB::new();
+        for primitive in &primitives[range.clone()] {
+            bounding_box = AABB::from_boxes(bounding_box, primitive.bounding_box());
+        }
+        // Base case
+        if count <= 64 || depth > 36 {
+            let node_index = nodes.len();
+
+            let node = BVHNode {
+                bounding_box,
+                kind: BVHNodeKind::Leaf {
+                    start: range.start as u32,
+                    count,
+                },
+            };
+            nodes.push(node);
+            return node_index;
+        }
+
+        let axis = bounding_box.longest_axis();
+        let slice = &mut primitives[range.clone()];
+        slice.sort_by(|a, b| {
+            let a_axis_interval = a.bounding_box().axis_interval(axis);
+            let b_axis_interval = b.bounding_box().axis_interval(axis);
+            a_axis_interval.min.total_cmp(&b_axis_interval.min)
+        });
+        let mid = range.start + (count as usize / 2);
+        let left_node = BVH::build_helper(primitives, nodes, range.start..mid, depth + 1);
+        let right_node = BVH::build_helper(primitives, nodes, mid..range.end, depth + 1);
+        let node_index = nodes.len();
+        let bounding_box = AABB::from_boxes(
+            nodes[left_node].bounding_box,
+            nodes[right_node].bounding_box,
+        );
+
+        let node = BVHNode {
+            bounding_box,
+            kind: BVHNodeKind::Inner {
+                left: left_node as u32,
+                right: right_node as u32,
+            },
+        };
+        nodes.push(node);
+
+        node_index
+    }
+
+    pub fn build(mut primitives: Vec<Primitive>) -> Self {
+        let mut nodes: Vec<BVHNode> = Vec::new();
+        let count = primitives.len();
+        let index = BVH::build_helper(&mut primitives, &mut nodes, 0..count, 0);
+
+        BVH {
+            primitives,
+            nodes,
+            root: index,
+        }
+    }
+
+    fn root_node(&self) -> &BVHNode {
+        &self.nodes[self.root]
+    }
+
+    fn hit_leaf(&self, start: u32, count: u32, ray: &Ray, interval: Interval) -> Option<HitInfo> {
+        let mut closest = interval.max;
+        let mut hit_anything = None;
+
+        for i in start..start + count {
+            let primitive: &Primitive = &self.primitives[i as usize];
+
+            if let Some(hit) =
+                primitive.check_intersection(ray, Interval::new(interval.min, closest))
+            {
+                closest = hit.t;
+                hit_anything = Some(hit)
+            }
+        }
+        return hit_anything;
+    }
+}
+
+impl Hittable for BVH {
+    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+        if !self.bounding_box().hit(ray, ray_t) {
+            return None;
+        }
+
+        let mut closest = ray_t.max;
+        let mut hit_anything = None;
+        // let mut stack = vec![self.root];
+        let mut stack = [0; 64];
+        let mut stack_top = 1;
+        stack[0] = self.root;
+        while stack_top > 0 {
+            stack_top -= 1;
+            // let node_index = stack.pop().unwrap();
+            let node_index = stack[stack_top];
+            let node = self.nodes[node_index];
+            if !node
+                .bounding_box
+                .hit(ray, Interval::new(ray_t.min, closest))
+            {
+                continue;
+            }
+
+            match node.kind {
+                BVHNodeKind::Leaf { start, count } => {
+                    if let Some(hit) =
+                        self.hit_leaf(start, count, ray, Interval::new(ray_t.min, closest))
+                    {
+                        closest = hit.t;
+                        hit_anything = Some(hit);
+                    }
+                }
+                BVHNodeKind::Inner { left, right } => {
+                    stack[stack_top] = right as usize;
+                    stack_top += 1;
+                    stack[stack_top] = left as usize;
+                    stack_top += 1;
+                }
+            }
+        }
+        hit_anything
+    }
+
+    fn bounding_box(&self) -> AABB {
+        self.root_node().bounding_box
+    }
+}
 
 #[cfg(test)]
 mod tests {

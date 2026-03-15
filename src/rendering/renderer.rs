@@ -35,7 +35,7 @@ impl Renderer {
             return Color::BLACK;
         }
         if let Some(hit_info) = world
-            .objects
+            .bvh
             .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
         {
             if let Some((attenuation, scattered)) =
