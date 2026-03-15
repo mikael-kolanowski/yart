@@ -4,7 +4,7 @@ use log::{info, warn};
 
 use crate::{
     Material,
-    math::{Hittable, Point3, Triangle, interval::Interval},
+    math::{Point3, Triangle},
 };
 
 pub struct Mesh {
@@ -97,24 +97,6 @@ impl Mesh {
 
         info!("loaded mesh: {} triangles", triangles.len());
         Ok(Self { triangles })
-    }
-}
-
-impl Hittable for Mesh {
-    fn check_intersection(
-        &self,
-        ray: &crate::math::Ray,
-        ray_t: crate::math::interval::Interval,
-    ) -> Option<crate::math::HitInfo> {
-        let mut closest = ray_t.max;
-        let mut hit_anything = None;
-        for triangle in &self.triangles {
-            if let Some(hit) = triangle.check_intersection(ray, Interval::new(ray_t.min, closest)) {
-                closest = hit.t;
-                hit_anything = Some(hit);
-            }
-        }
-        hit_anything
     }
 }
 

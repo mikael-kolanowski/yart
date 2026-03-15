@@ -3,11 +3,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::{collections::HashMap, sync::Arc};
 
-use log::warn;
+use log::{info, warn};
 
 use crate::color::Color;
 use crate::math::interval::Interval;
-use crate::math::{HitInfo, Point3, Ray, Sphere, Triangle};
+use crate::math::{HitInfo, Point3, Ray, Sphere, Triangle, geometry::AABB};
 use crate::mesh::Mesh;
 use crate::rendering::material::{Dielectric, DummyMaterial, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
@@ -18,11 +18,18 @@ use crate::rendering::sky::{LinearGradientSkyBox, SolidColorSkyBox};
 
 pub struct World {
     pub objects: Vec<Box<dyn Hittable>>,
+    bounding_box: AABB,
     pub skybox: Box<dyn SkyBox>,
 }
 
 impl World {
     pub fn from_config(config: &Config, asset_base_path: &Path) -> Self {
+        let mut world = Self {
+            skybox: build_skybox(&config.sky),
+            bounding_box: AABB::new(),
+            objects: Vec::new(),
+        };
+
         let mut material_map: HashMap<String, Arc<dyn Material>> = HashMap::new();
         let fallback_material: Arc<dyn Material> = Arc::new(DummyMaterial {});
         for material_config in &config.materials {
@@ -46,7 +53,6 @@ impl World {
             };
         }
 
-        let mut objects: Vec<Box<dyn Hittable>> = Vec::new();
         for object_config in &config.objects {
             match object_config {
                 ObjectConfig::Sphere {
@@ -58,7 +64,7 @@ impl World {
                         warn!("material '{material}' could not be resolved");
                         &fallback_material
                     });
-                    objects.push(Box::new(Sphere {
+                    world.add(Box::new(Sphere {
                         center: Point3(*position),
                         radius: *radius,
                         material: material.clone(),
@@ -74,7 +80,7 @@ impl World {
                         warn!("material '{material}' could not be resolved");
                         &fallback_material
                     });
-                    objects.push(Box::new(Triangle {
+                    world.add(Box::new(Triangle {
                         p1: *p1,
                         p2: *p2,
                         p3: *p3,
@@ -83,7 +89,7 @@ impl World {
                 }
                 ObjectConfig::Mesh { path, material } => {
                     let material = material_map.get(material).unwrap_or_else(|| {
-                        eprintln!("Warning: material {material} could not be resolved");
+                        warn!("material {material} could not be resolved");
                         &fallback_material
                     });
                     let asset_path = resolve_relative_path(asset_base_path, path);
@@ -91,18 +97,22 @@ impl World {
                         Err(message) => {
                             eprintln!("{message}");
                         }
-                        Ok(mesh) => objects.push(Box::new(mesh)),
+                        Ok(mesh) => {
+                            for tri in mesh.triangles {
+                                world.add(Box::new(tri));
+                            }
+                        }
                     }
                 }
             }
         }
 
-        let skybox = build_skybox(&config.sky);
-
-        World { objects, skybox }
+        info!("world bounding box: {:?}", world.bounding_box);
+        world
     }
 
     fn add(&mut self, object: Box<dyn Hittable>) {
+        self.bounding_box = AABB::from_boxes(self.bounding_box, object.bounding_box());
         self.objects.push(object);
     }
 }
@@ -147,6 +157,10 @@ impl Hittable for World {
         }
         hit_anything
     }
+
+    fn bounding_box(&self) -> AABB {
+        self.bounding_box
+    }
 }
 
 impl Default for World {
@@ -156,6 +170,7 @@ impl Default for World {
             skybox: Box::new(SolidColorSkyBox {
                 color: Color::WHITE,
             }),
+            bounding_box: AABB::new(),
         }
     }
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::interval::Interval;
 use super::ray::Ray;
-use super::vector::{Normal3, Point3};
+use super::vector::{Normal3, Point3, Vec3};
 use crate::Material;
 
 pub struct HitInfo {
@@ -15,6 +15,7 @@ pub struct HitInfo {
 
 pub trait Hittable {
     fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
+    fn bounding_box(&self) -> AABB;
 }
 
 pub struct Sphere {
@@ -64,6 +65,11 @@ impl Hittable for Sphere {
             front_face,
             material: self.material.clone(),
         })
+    }
+
+    fn bounding_box(&self) -> AABB {
+        let r = Vec3::new(self.radius, self.radius, self.radius);
+        AABB::from_extrema(self.center + r, self.center - r)
     }
 }
 
@@ -129,6 +135,119 @@ impl Hittable for Triangle {
             material: self.material.clone(),
             front_face,
         })
+    }
+
+    fn bounding_box(&self) -> AABB {
+        let x = Interval::new(
+            self.p1.0.x.min(self.p2.0.x).min(self.p3.0.x),
+            self.p1.0.x.max(self.p2.0.x).max(self.p3.0.x),
+        );
+
+        let y = Interval::new(
+            self.p1.0.y.min(self.p2.0.y).min(self.p3.0.y),
+            self.p1.0.y.max(self.p2.0.y).max(self.p3.0.y),
+        );
+
+        let z = Interval::new(
+            self.p1.0.z.min(self.p2.0.z).min(self.p3.0.z),
+            self.p1.0.z.max(self.p2.0.z).max(self.p3.0.z),
+        );
+
+        AABB { x, y, z }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct AABB {
+    x: Interval,
+    y: Interval,
+    z: Interval,
+}
+
+impl AABB {
+    pub fn new() -> Self {
+        Self {
+            x: Interval::EMPTY,
+            y: Interval::EMPTY,
+            z: Interval::EMPTY,
+        }
+    }
+    fn from_extrema(a: Point3, b: Point3) -> Self {
+        let x = {
+            if a.0.x <= b.0.x {
+                Interval::new(a.0.x, b.0.x)
+            } else {
+                Interval::new(b.0.x, a.0.x)
+            }
+        };
+
+        let y = {
+            if a.0.y <= b.0.y {
+                Interval::new(a.0.y, b.0.y)
+            } else {
+                Interval::new(b.0.y, a.0.y)
+            }
+        };
+
+        let z = {
+            if a.0.z <= b.0.z {
+                Interval::new(a.0.z, b.0.z)
+            } else {
+                Interval::new(b.0.z, a.0.z)
+            }
+        };
+
+        Self { x, y, z }
+    }
+
+    pub fn from_boxes(a: Self, b: Self) -> Self {
+        let x = Interval::from(a.x, b.x);
+        let y = Interval::from(a.y, b.y);
+        let z = Interval::from(a.z, b.z);
+
+        Self { x, y, z }
+    }
+
+    fn axis_interval(&self, n: u32) -> Interval {
+        match n {
+            1 => self.y,
+            2 => self.z,
+            _ => self.x,
+        }
+    }
+
+    pub fn hit(&self, ray: &Ray, ray_t: Interval) -> bool {
+        let t = ray_t;
+        for axis in 0..=2 {
+            let interval = self.axis_interval(axis);
+            let origin = ray.origin.0.axis(axis);
+            let direction = ray.direction.axis(axis);
+
+            // Handle the case where the ray is parallel to the axis
+            if direction == 0.0 {
+                // If the origin is not between the slab boundaries, return false
+                if origin < interval.min || origin > interval.max {
+                    return false;
+                }
+                // Otherwise, the ray is inside the slab, so we don't update t
+                continue;
+            }
+
+            let adinv = 1.0 / direction;
+            let mut t0 = (interval.min - origin) * adinv;
+            let mut t1 = (interval.max - origin) * adinv;
+
+            if t0 < t1 {
+                if t0 > t1 {
+                    std::mem::swap(&mut t0, &mut t1);
+                }
+            }
+
+            if t.max <= t.min {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -382,5 +501,96 @@ mod tests {
             .unwrap();
 
         assert!(!rec.front_face);
+    }
+
+    #[test]
+    fn aabb_default_constructor() {
+        let r#box = AABB::new();
+        assert!(r#box.x.min == f64::INFINITY);
+        assert!(r#box.x.max == f64::NEG_INFINITY);
+        assert!(r#box.y.min == f64::INFINITY);
+        assert!(r#box.y.max == f64::NEG_INFINITY);
+        assert!(r#box.z.min == f64::INFINITY);
+        assert!(r#box.z.max == f64::NEG_INFINITY);
+    }
+
+    #[test]
+    fn aabb_from_extrema() {
+        let a = Point3::new(1.0, 2.0, 3.0);
+        let b = Point3::new(4.0, 5.0, 6.0);
+        let r#box = AABB::from_extrema(a, b);
+
+        assert!(r#box.x.min == 1.0);
+        assert!(r#box.x.max == 4.0);
+        assert!(r#box.y.min == 2.0);
+        assert!(r#box.y.max == 5.0);
+        assert!(r#box.z.min == 3.0);
+        assert!(r#box.z.max == 6.0);
+
+        // Test with reversed points
+        let r#box2 = AABB::from_extrema(b, a);
+        assert!(r#box2.x.min == 1.0);
+        assert!(r#box2.x.max == 4.0);
+        assert!(r#box2.y.min == 2.0);
+        assert!(r#box2.y.max == 5.0);
+        assert!(r#box2.z.min == 3.0);
+        assert!(r#box2.z.max == 6.0);
+    }
+
+    #[test]
+    fn aabb_from_boxes() {
+        let box1 = AABB::from_extrema(Point3::new(0.0, 0.0, 0.0), Point3::new(1.0, 1.0, 1.0));
+        let box2 = AABB::from_extrema(Point3::new(2.0, 2.0, 2.0), Point3::new(3.0, 3.0, 3.0));
+        let combined = AABB::from_boxes(box1, box2);
+
+        assert!(combined.x.min == 0.0);
+        assert!(combined.x.max == 3.0);
+        assert!(combined.y.min == 0.0);
+        assert!(combined.y.max == 3.0);
+        assert!(combined.z.min == 0.0);
+        assert!(combined.z.max == 3.0);
+    }
+
+    #[test]
+    fn aabb_hit_ray() {
+        // Create a box from (-1,-1,-1) to (1,1,1)
+        let r#box = AABB::from_extrema(Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, 1.0, 1.0));
+
+        // Ray hitting the center of the front face
+        let ray1 = Ray::new(Point3::new(0.0, 0.0, -2.0), Vec3::new(0.0, 0.0, 1.0));
+        assert!(r#box.hit(&ray1, Interval::new(0.0, 10.0)));
+
+        // Ray missing the box (too high in y)
+        let ray2 = Ray::new(Point3::new(0.0, 2.0, -2.0), Vec3::new(0.0, 0.0, 1.0));
+        assert!(!r#box.hit(&ray2, Interval::new(0.0, 10.0)));
+
+        // Ray originating inside the box
+        let ray3 = Ray::new(Point3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 1.0));
+        assert!(r#box.hit(&ray3, Interval::new(0.0, 10.0)));
+
+        // Ray parallel to one axis but still hitting
+        let ray4 = Ray::new(Point3::new(0.5, 0.5, -2.0), Vec3::new(0.0, 0.0, 1.0));
+        assert!(r#box.hit(&ray4, Interval::new(0.0, 10.0)));
+    }
+
+    #[test]
+    fn aabb_axis_interval() {
+        let r#box = AABB::from_extrema(Point3::new(1.0, 2.0, 3.0), Point3::new(4.0, 5.0, 6.0));
+
+        // X axis (index 0)
+        assert!(r#box.axis_interval(0).min == 1.0);
+        assert!(r#box.axis_interval(0).max == 4.0);
+
+        // Y axis (index 1)
+        assert!(r#box.axis_interval(1).min == 2.0);
+        assert!(r#box.axis_interval(1).max == 5.0);
+
+        // Z axis (index 2)
+        assert!(r#box.axis_interval(2).min == 3.0);
+        assert!(r#box.axis_interval(2).max == 6.0);
+
+        // Default case (should be X axis)
+        assert!(r#box.axis_interval(3).min == 1.0);
+        assert!(r#box.axis_interval(3).max == 4.0);
     }
 }

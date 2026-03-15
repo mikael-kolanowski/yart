@@ -59,6 +59,14 @@ impl Vec3 {
         let h = 1e-8;
         self.dot(other) < h
     }
+
+    pub fn axis(&self, axis: u32) -> f64 {
+        match axis {
+            1 => self.y,
+            2 => self.z,
+            _ => self.x,
+        }
+    }
 }
 
 impl Lerp<Vec3> for Vec3 {

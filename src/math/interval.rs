@@ -18,6 +18,14 @@ impl Interval {
         Self { min, max }
     }
 
+    pub fn from(a: Interval, b: Interval) -> Self {
+        let min = { if a.min <= b.min { a.min } else { b.min } };
+
+        let max = { if a.max >= b.max { a.max } else { b.max } };
+
+        Self { min, max }
+    }
+
     pub fn size(self) -> f64 {
         self.max - self.min
     }
