@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use rand::prelude::*;
+
 use super::interval::Interval;
 use super::ray::Ray;
 use super::vector::{Normal3, Point3, Vec3};
@@ -288,8 +290,90 @@ impl AABB {
         true
     }
 }
+fn box_compare(a: Box<dyn Hittable>, b: Box<dyn Hittable>, axis: u32) -> std::cmp::Ordering {
+    let a_axis_interval = a.bounding_box().axis_interval(axis);
+    let b_axis_interval = b.bounding_box().axis_interval(axis);
+    a_axis_interval.min.total_cmp(&b_axis_interval.min)
+}
 
-pub struct BVHNode {}
+pub struct BVHNode {
+    left: Box<dyn Hittable>,
+    right: Box<dyn Hittable>,
+    bounding_box: AABB,
+}
+
+impl BVHNode {
+    fn new(objects: Vec<Box<dyn Hittable>>, start: usize, end: usize) -> Self {
+        let mut rng = rand::rng();
+        let axis: u32 = rng.random_range(0..=2);
+
+        let object_span = end - start;
+        if object_span == 1 {
+            return Self {
+                left: objects[start],
+                right: objects[start],
+                bounding_box: objects[start].bounding_box(),
+            };
+        } else if object_span == 2 {
+            let left = objects[start];
+            let right = objects[end];
+            let bounding_box = AABB::from_boxes(left.bounding_box(), right.bounding_box());
+
+            return Self {
+                left,
+                right,
+                bounding_box,
+            };
+        } else {
+            let mut slice = &objects[start..start + end];
+            slice.sort_by(|&a, &b| box_compare(a, b, axis));
+
+            let mid = start + object_span / 2;
+            let left = Box::new(BVHNode::new(objects, start, mid));
+            let right = Box::new(BVHNode::new(objects, mid, end));
+            let bounding_box = AABB::from_boxes(left.bounding_box, right.bounding_box);
+            Self {
+                left,
+                right,
+                bounding_box,
+            }
+        }
+    }
+}
+
+impl Hittable for BVHNode {
+    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+        if !self.bounding_box.hit(ray, ray_t) {
+            return None;
+        }
+
+        let hit_left = self.left.check_intersection(ray, ray_t);
+        let interval = if let Some(ref h) = hit_left {
+            Interval::new(ray_t.min, h.t)
+        } else {
+            ray_t
+        };
+
+        let hit_right = self.right.check_intersection(ray, interval);
+
+        match (hit_left, hit_right) {
+            (Some(l), Some(r)) => {
+                if l.t < r.t {
+                    Some(l)
+                } else {
+                    Some(r)
+                }
+            }
+            (Some(l), None) => Some(l),
+            (None, Some(r)) => Some(r),
+            (None, None) => None,
+        }
+    }
+
+    fn bounding_box(&self) -> AABB {
+        self.bounding_box
+    }
+}
 
 #[cfg(test)]
 mod tests {
