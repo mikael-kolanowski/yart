@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::path::PathBuf;
 
 use eframe::egui;
@@ -32,6 +33,8 @@ pub struct Editor {
 
     // Shortcuts
     shortcuts: Shortcuts,
+
+    asset_base_path: PathBuf,
 }
 
 impl Editor {
@@ -49,12 +52,14 @@ impl Editor {
             add_material_dialog: AddMaterialDialog::new(),
             help_dialog: HelpDialog::new(),
             shortcuts: Shortcuts::new(),
+            asset_base_path: PathBuf::new(),
         }
     }
 
-    pub fn with_config(config: &Config) -> Self {
+    pub fn with_config(config: &Config, asset_base_path: &Path) -> Self {
         Self {
             config: config.clone(),
+            asset_base_path: PathBuf::from(asset_base_path),
             ..Default::default()
         }
     }
@@ -83,7 +88,7 @@ impl Editor {
         };
 
         let (camera, world, renderer) =
-            load_scene_from_config(&preview_config, &PathBuf::from("."));
+            load_scene_from_config(&preview_config, &self.asset_base_path);
 
         let image = renderer.render(&world, &camera, &mut sampler, false);
 

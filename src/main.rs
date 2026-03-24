@@ -14,7 +14,7 @@ fn print_usage() {
     println!("yart --editor [config.toml]");
 }
 
-fn run_gui(args: &Vec<String>) {
+fn run_gui(args: &[String]) {
     let config_path = args.get(2).map(|s| s.as_str());
 
     let editor = {
@@ -26,7 +26,8 @@ fn run_gui(args: &Vec<String>) {
                     process::exit(1);
                 }
             };
-            yart::gui::Editor::with_config(&config)
+            let asset_base_path = Path::new(&path).parent().unwrap();
+            yart::gui::Editor::with_config(&config, asset_base_path)
         } else {
             yart::gui::Editor::new()
         }
@@ -36,14 +37,14 @@ fn run_gui(args: &Vec<String>) {
     let _ = eframe::run_native("YART Editor", options, Box::new(|_cc| Ok(Box::new(editor))));
 }
 
-fn run_cli(args: &Vec<String>) {
+fn run_cli(args: &[String]) {
     let config_path = args.get(1).unwrap_or_else(|| {
         error!("no config file supplied");
         print_usage();
         process::exit(1);
     });
 
-    let config = Config::from_path(&Path::new(config_path)).unwrap_or_else(|err| {
+    let config = Config::from_path(Path::new(config_path)).unwrap_or_else(|err| {
         error!("could not read config: {err}");
         process::exit(1);
     });
@@ -52,7 +53,7 @@ fn run_cli(args: &Vec<String>) {
     let mut sampler = yart::rendering::sampler::RandomSampler::new(&mut rng);
 
     let asset_base_path = Path::new(&config_path).parent().unwrap();
-    let (camera, world, renderer) = load_scene_from_config(&config, &asset_base_path);
+    let (camera, world, renderer) = load_scene_from_config(&config, asset_base_path);
 
     let image = renderer.render(&world, &camera, &mut sampler, true);
     let mut output_file = File::create(&config.image.output).expect("Unable to open output file");
