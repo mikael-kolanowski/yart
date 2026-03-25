@@ -4,7 +4,7 @@ use super::interval::Interval;
 use super::ray::Ray;
 use super::vector::{Normal3, Point3, Vec3};
 
-pub struct HitInfo {
+pub struct Hit {
     pub point: Point3,
     pub normal: Normal3,
     pub t: f64,
@@ -12,8 +12,8 @@ pub struct HitInfo {
     pub material_id: usize,
 }
 
-pub trait Hittable {
-    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
+pub trait Intersect {
+    fn intersect(&self, ray: &Ray, interval: Interval) -> Option<Hit>;
     fn bounding_box(&self) -> AABB;
 }
 
@@ -23,8 +23,8 @@ pub struct Sphere {
     pub material_id: usize,
 }
 
-impl Hittable for Sphere {
-    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+impl Intersect for Sphere {
+    fn intersect(&self, ray: &Ray, interval: Interval) -> Option<Hit> {
         let oc = self.center - ray.origin;
         let a = ray.direction.length_squared();
         let h = ray.direction.dot(oc);
@@ -37,9 +37,9 @@ impl Hittable for Sphere {
 
         let sqrt_d = discriminant.sqrt();
         let mut root = (h - sqrt_d) / a;
-        if !ray_t.surrounds(root) {
+        if !interval.surrounds(root) {
             root = (h + sqrt_d) / a;
-            if !ray_t.surrounds(root) {
+            if !interval.surrounds(root) {
                 return None;
             }
         }
@@ -57,7 +57,7 @@ impl Hittable for Sphere {
             }
         };
 
-        Some(HitInfo {
+        Some(Hit {
             point,
             normal,
             t: root,
@@ -80,8 +80,8 @@ pub struct Triangle {
     pub material_id: usize,
 }
 
-impl Hittable for Triangle {
-    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+impl Intersect for Triangle {
+    fn intersect(&self, ray: &Ray, interval: Interval) -> Option<Hit> {
         let edge1 = self.p2 - self.p1;
         let edge2 = self.p3 - self.p1;
 
@@ -111,7 +111,7 @@ impl Hittable for Triangle {
 
         let t = f * edge2.dot(q);
 
-        if !ray_t.surrounds(t) {
+        if !interval.surrounds(t) {
             return None;
         }
 
@@ -127,7 +127,7 @@ impl Hittable for Triangle {
                 false
             }
         };
-        Some(HitInfo {
+        Some(Hit {
             point,
             normal,
             t,
@@ -227,9 +227,9 @@ impl AABB {
         }
     }
 
-    pub fn hit(&self, ray: &Ray, ray_t: Interval) -> bool {
-        let mut min = ray_t.min;
-        let mut max = ray_t.max;
+    pub fn hit(&self, ray: &Ray, interval: Interval) -> bool {
+        let mut min = interval.min;
+        let mut max = interval.max;
 
         for axis in 0..=2 {
             let interval = self.axis_interval(axis);
@@ -274,11 +274,11 @@ pub enum Primitive {
     Triangle(Triangle),
 }
 
-impl Hittable for Primitive {
-    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+impl Intersect for Primitive {
+    fn intersect(&self, ray: &Ray, interval: Interval) -> Option<Hit> {
         match &self {
-            Primitive::Sphere(sphere) => sphere.check_intersection(ray, ray_t),
-            Primitive::Triangle(triangle) => triangle.check_intersection(ray, ray_t),
+            Primitive::Sphere(sphere) => sphere.intersect(ray, interval),
+            Primitive::Triangle(triangle) => triangle.intersect(ray, interval),
         }
     }
 
@@ -379,16 +379,14 @@ impl BVH {
         &self.nodes[self.root]
     }
 
-    fn hit_leaf(&self, start: u32, count: u32, ray: &Ray, interval: Interval) -> Option<HitInfo> {
+    fn hit_leaf(&self, start: u32, count: u32, ray: &Ray, interval: Interval) -> Option<Hit> {
         let mut closest = interval.max;
         let mut hit_anything = None;
 
         for i in start..start + count {
             let primitive: &Primitive = &self.primitives[i as usize];
 
-            if let Some(hit) =
-                primitive.check_intersection(ray, Interval::new(interval.min, closest))
-            {
+            if let Some(hit) = primitive.intersect(ray, Interval::new(interval.min, closest)) {
                 closest = hit.t;
                 hit_anything = Some(hit)
             }
@@ -397,13 +395,13 @@ impl BVH {
     }
 }
 
-impl Hittable for BVH {
-    fn check_intersection(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
-        if !self.bounding_box().hit(ray, ray_t) {
+impl Intersect for BVH {
+    fn intersect(&self, ray: &Ray, interval: Interval) -> Option<Hit> {
+        if !self.bounding_box().hit(ray, interval) {
             return None;
         }
 
-        let mut closest = ray_t.max;
+        let mut closest = interval.max;
         let mut hit_anything = None;
         // let mut stack = vec![self.root];
         let mut stack = [0; 64];
@@ -416,7 +414,7 @@ impl Hittable for BVH {
             let node = self.nodes[node_index];
             if !node
                 .bounding_box
-                .hit(ray, Interval::new(ray_t.min, closest))
+                .hit(ray, Interval::new(interval.min, closest))
             {
                 continue;
             }
@@ -424,7 +422,7 @@ impl Hittable for BVH {
             match node.kind {
                 BVHNodeKind::Leaf { start, count } => {
                     if let Some(hit) =
-                        self.hit_leaf(start, count, ray, Interval::new(ray_t.min, closest))
+                        self.hit_leaf(start, count, ray, Interval::new(interval.min, closest))
                     {
                         closest = hit.t;
                         hit_anything = Some(hit);
@@ -486,9 +484,7 @@ mod tests {
 
         let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
-        let hit = sphere
-            .check_intersection(&ray, Interval::new(0.0, 1000.0))
-            .unwrap();
+        let hit = sphere.intersect(&ray, Interval::new(0.0, 1000.0)).unwrap();
 
         assert!((hit.t - 4.0).abs() < 1e-6);
     }
@@ -498,7 +494,7 @@ mod tests {
         let sphere = unit_sphere(Point3::new(0.0, 0.0, -5.0));
         let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 1.0, 0.0));
 
-        let hit = sphere.check_intersection(&ray, Interval::new(0.0, 1000.0));
+        let hit = sphere.intersect(&ray, Interval::new(0.0, 1000.0));
 
         assert!(hit.is_none());
     }
@@ -508,7 +504,7 @@ mod tests {
         let sphere = unit_sphere(Point3::new(0.0, 1.0, -5.0));
         let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
-        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
+        let hit = sphere.intersect(&ray, Interval::new(0.001, 1000.0));
         assert!(hit.is_some());
 
         let rec = hit.unwrap();
@@ -521,7 +517,7 @@ mod tests {
         let sphere = unit_sphere(Point3::ORIGIN);
         let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, 1.0));
 
-        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
+        let hit = sphere.intersect(&ray, Interval::new(0.001, 1000.0));
         assert!(hit.is_some());
 
         let rec = hit.unwrap();
@@ -534,7 +530,7 @@ mod tests {
         let sphere = unit_sphere(Point3::new(0.0, 0.0, 5.0));
         let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
-        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 1000.0));
+        let hit = sphere.intersect(&ray, Interval::new(0.001, 1000.0));
         assert!(hit.is_none());
     }
 
@@ -545,7 +541,7 @@ mod tests {
         let ray = Ray::new(Point3::ORIGIN, Vec3::new(0.0, 0.0, -1.0));
 
         // Reject valid hit by shrinking interval
-        let hit = sphere.check_intersection(&ray, Interval::new(0.001, 3.0));
+        let hit = sphere.intersect(&ray, Interval::new(0.001, 3.0));
 
         assert!(hit.is_none());
     }
@@ -557,7 +553,7 @@ mod tests {
         let ray = Ray::new(Point3::new(0.0, 0.0, -3.0), Vec3::new(0.0, 0.0, 1.0));
 
         let hit = sphere
-            .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
+            .intersect(&ray, Interval::new(0.001, f64::INFINITY))
             .expect("Ray should hit sphere");
 
         // Hit point should be at z = -1
@@ -580,7 +576,7 @@ mod tests {
         );
 
         let hit = sphere
-            .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
+            .intersect(&ray, Interval::new(0.001, f64::INFINITY))
             .expect("Ray should hit sphere");
 
         // Normal must match radial direction
@@ -596,7 +592,7 @@ mod tests {
         let ray_inner = Ray::new(Point3::ORIGIN, Vec3::new(1.0, 0.0, 0.0));
 
         let hit = sphere
-            .check_intersection(&ray_inner, Interval::new(0.001, f64::INFINITY))
+            .intersect(&ray_inner, Interval::new(0.001, f64::INFINITY))
             .expect("Ray should hit the sphere");
 
         // A ray coming from within the sphere should have the correct `front_face` property
@@ -605,7 +601,7 @@ mod tests {
         let ray_outer = Ray::new(Point3::new(-15.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0));
 
         let hit = sphere
-            .check_intersection(&ray_outer, Interval::new(0.001, f64::INFINITY))
+            .intersect(&ray_outer, Interval::new(0.001, f64::INFINITY))
             .expect("Ray should hit the sphere");
 
         // A ray comming from outside
@@ -618,7 +614,7 @@ mod tests {
 
         let triangle = tri();
 
-        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+        let hit = triangle.intersect(&ray, Interval::new(0.001, std::f64::INFINITY));
 
         assert!(hit.is_some());
 
@@ -634,7 +630,7 @@ mod tests {
 
         let triangle = tri();
 
-        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+        let hit = triangle.intersect(&ray, Interval::new(0.001, std::f64::INFINITY));
 
         assert!(hit.is_none())
     }
@@ -645,7 +641,7 @@ mod tests {
 
         let triangle = tri();
 
-        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+        let hit = triangle.intersect(&ray, Interval::new(0.001, std::f64::INFINITY));
 
         assert!(hit.is_none())
     }
@@ -656,7 +652,7 @@ mod tests {
 
         let triangle = tri();
 
-        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+        let hit = triangle.intersect(&ray, Interval::new(0.001, std::f64::INFINITY));
 
         assert!(hit.is_some())
     }
@@ -667,7 +663,7 @@ mod tests {
 
         let triangle = tri();
 
-        let hit = triangle.check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY));
+        let hit = triangle.intersect(&ray, Interval::new(0.001, std::f64::INFINITY));
 
         assert!(hit.is_some())
     }
@@ -679,7 +675,7 @@ mod tests {
         let triangle = tri();
 
         let rec = triangle
-            .check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY))
+            .intersect(&ray, Interval::new(0.001, std::f64::INFINITY))
             .unwrap();
 
         assert!(rec.front_face);
@@ -692,7 +688,7 @@ mod tests {
         let triangle = tri();
 
         let rec = triangle
-            .check_intersection(&ray, Interval::new(0.001, std::f64::INFINITY))
+            .intersect(&ray, Interval::new(0.001, std::f64::INFINITY))
             .unwrap();
 
         assert!(!rec.front_face);

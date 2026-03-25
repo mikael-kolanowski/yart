@@ -6,7 +6,7 @@ use crate::image::Image;
 use crate::progressbar::ProgressBar;
 use std::time::Instant;
 
-use crate::math::{Ray, geometry::Hittable, interval::Interval};
+use crate::math::{Ray, geometry::Intersect, interval::Interval};
 
 use super::camera::Camera;
 use super::sampler::Sampler;
@@ -34,15 +34,13 @@ impl Renderer {
         if max_bounces == 0 {
             return Color::BLACK;
         }
-        if let Some(hit_info) = world
-            .bvh
-            .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
+        if let Some(hit_info) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY))
         {
-            let material = world.lookup_material(hit_info.material_id);
-            if let Some((attenuation, scattered)) = material.scatter(ray, &hit_info, sampler) {
+            let material = world.lookup_material(hit.material_id);
+            if let Some((attenuation, scattered)) = material.scatter(ray, &hit, sampler) {
                 return attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler);
             } else {
-                return material.emitted(&hit_info);
+                return material.emitted(&hit);
             }
         }
 

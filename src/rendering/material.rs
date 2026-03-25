@@ -1,15 +1,15 @@
 use crate::color::Color;
 use crate::math::Ray;
-use crate::math::{HitInfo, Vec3};
+use crate::math::{Hit, Vec3};
 use crate::rendering::sampler::Sampler;
 
 pub trait Material {
     /// Returns the scannered ray and the color attenuation.
     /// If none, then incoming ray has been absorbed by the material.
-    fn scatter(&self, ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)>;
+    fn scatter(&self, ray: Ray, hit: &Hit, sampler: &mut dyn Sampler) -> Option<(Color, Ray)>;
 
     /// Fallback method. If the ray has been absorbed, signal to the render which color to use.
-    fn emitted(&self, _hit: &HitInfo) -> Color {
+    fn emitted(&self, _hit: &Hit) -> Color {
         Color::BLACK
     }
 }
@@ -18,12 +18,7 @@ pub trait Material {
 pub struct DummyMaterial;
 
 impl Material for DummyMaterial {
-    fn scatter(
-        &self,
-        _ray: Ray,
-        _hit: &HitInfo,
-        _sampler: &mut dyn Sampler,
-    ) -> Option<(Color, Ray)> {
+    fn scatter(&self, _ray: Ray, _hit: &Hit, _sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
         None
     }
 }
@@ -39,7 +34,7 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, _ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
+    fn scatter(&self, _ray: Ray, hit: &Hit, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
         // If we get a random direction directly opposite the normal bad things can happen
         let scatter_direction = {
             let d = hit.normal.0 + sampler.unit_vector();
@@ -55,16 +50,11 @@ impl Material for Lambertian {
 pub struct NormalVisualizer;
 
 impl Material for NormalVisualizer {
-    fn scatter(
-        &self,
-        _ray: Ray,
-        _hit: &HitInfo,
-        _sampler: &mut dyn Sampler,
-    ) -> Option<(Color, Ray)> {
+    fn scatter(&self, _ray: Ray, _hit: &Hit, _sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
         None
     }
 
-    fn emitted(&self, hit: &HitInfo) -> Color {
+    fn emitted(&self, hit: &Hit) -> Color {
         Color::from(0.5 * (hit.normal.0 + Vec3::ONES))
     }
 }
@@ -81,7 +71,7 @@ impl Metal {
 }
 
 impl Material for Metal {
-    fn scatter(&self, ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
+    fn scatter(&self, ray: Ray, hit: &Hit, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
         let reflected =
             ray.direction.reflect(hit.normal).normalized() + (self.fuzz * sampler.unit_vector());
         let scattered = Ray::new(hit.point, reflected);
@@ -117,7 +107,7 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, ray: Ray, hit: &HitInfo, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
+    fn scatter(&self, ray: Ray, hit: &Hit, sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
         // Determine the refractive indices based on whether we're entering or exiting the material
         let (eta_i, eta_t) = if hit.front_face {
             // Ray is entering the material (air -> dielectric)
@@ -182,7 +172,7 @@ mod tests {
         let mut sampler = RandomSampler::new(rng);
 
         // Ray hitting from front (air -> glass)
-        let hit = HitInfo {
+        let hit = Hit {
             point: Point3::new(0.0, 0.0, 0.0),
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
@@ -225,7 +215,7 @@ mod tests {
         let mut sampler = RandomSampler::new(rng);
 
         // Ray hitting from front (air -> glass)
-        let hit = HitInfo {
+        let hit = Hit {
             point: Point3::new(0.0, 0.0, 0.0),
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
@@ -259,7 +249,7 @@ mod tests {
         let mut sampler = RandomSampler::new(rng);
 
         // Ray hitting from back (glass -> air)
-        let hit = HitInfo {
+        let hit = Hit {
             point: Point3::new(0.0, 0.0, 0.0),
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
@@ -316,7 +306,7 @@ mod tests {
         let rng = rand::prelude::SmallRng::seed_from_u64(42);
         let mut sampler = RandomSampler::new(rng);
 
-        let hit = HitInfo {
+        let hit = Hit {
             point: Point3::new(0.0, 0.0, 0.0),
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
