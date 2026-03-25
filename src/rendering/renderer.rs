@@ -38,12 +38,11 @@ impl Renderer {
             .bvh
             .check_intersection(&ray, Interval::new(0.001, f64::INFINITY))
         {
-            if let Some((attenuation, scattered)) =
-                hit_info.material.scatter(ray, &hit_info, sampler)
-            {
+            let material = world.lookup_material(hit_info.material_id);
+            if let Some((attenuation, scattered)) = material.scatter(ray, &hit_info, sampler) {
                 return attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler);
             } else {
-                return hit_info.material.emitted(&hit_info);
+                return material.emitted(&hit_info);
             }
         }
 

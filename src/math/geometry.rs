@@ -1,17 +1,15 @@
 use std::ops::Range;
-use std::sync::Arc;
 
 use super::interval::Interval;
 use super::ray::Ray;
 use super::vector::{Normal3, Point3, Vec3};
-use crate::Material;
 
 pub struct HitInfo {
     pub point: Point3,
     pub normal: Normal3,
     pub t: f64,
     pub front_face: bool,
-    pub material: Arc<dyn Material>,
+    pub material_id: usize,
 }
 
 pub trait Hittable {
@@ -22,7 +20,7 @@ pub trait Hittable {
 pub struct Sphere {
     pub center: Point3,
     pub radius: f64,
-    pub material: Arc<dyn Material>,
+    pub material_id: usize,
 }
 
 impl Hittable for Sphere {
@@ -64,7 +62,7 @@ impl Hittable for Sphere {
             normal,
             t: root,
             front_face,
-            material: self.material.clone(),
+            material_id: self.material_id,
         })
     }
 
@@ -79,7 +77,7 @@ pub struct Triangle {
     pub p1: Point3,
     pub p2: Point3,
     pub p3: Point3,
-    pub material: Arc<dyn Material>,
+    pub material_id: usize,
 }
 
 impl Hittable for Triangle {
@@ -133,7 +131,7 @@ impl Hittable for Triangle {
             point,
             normal,
             t,
-            material: self.material.clone(),
+            material_id: self.material_id,
             front_face,
         })
     }
@@ -461,7 +459,7 @@ mod tests {
         Sphere {
             center,
             radius: 1.0,
-            material: Arc::new(DummyMaterial),
+            material_id: 0,
         }
     }
 
@@ -469,7 +467,7 @@ mod tests {
         Sphere {
             center,
             radius,
-            material: Arc::new(DummyMaterial),
+            material_id: 0,
         }
     }
 
@@ -478,7 +476,7 @@ mod tests {
             p1: Point3::new(0.0, 0.0, 0.0),
             p2: Point3::new(1.0, 0.0, 0.0),
             p3: Point3::new(0.0, 1.0, 0.0),
-            material: Arc::new(DummyMaterial),
+            material_id: 0,
         }
     }
 

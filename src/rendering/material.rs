@@ -43,11 +43,7 @@ impl Material for Lambertian {
         // If we get a random direction directly opposite the normal bad things can happen
         let scatter_direction = {
             let d = hit.normal.0 + sampler.unit_vector();
-            if d.is_near_zero() {
-                hit.normal.0
-            } else {
-                d
-            }
+            if d.is_near_zero() { hit.normal.0 } else { d }
         };
 
         let scattered = Ray::new(hit.point, scatter_direction);
@@ -191,7 +187,7 @@ mod tests {
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
             front_face: true,
-            material: Arc::new(dielectric),
+            material_id: 0,
         };
 
         // Ray coming from air (eta_i = 1.0) hitting glass (eta_t = 1.5)
@@ -201,7 +197,7 @@ mod tests {
 
         // With normal incidence (cos_theta = 1.0), the reflectance should be very low
         // So the ray should refract
-        let result = hit.material.scatter(ray, &hit, &mut sampler);
+        let result = dielectric.scatter(ray, &hit, &mut sampler);
 
         assert!(result.is_some(), "Dielectric should scatter a ray");
         let (_attenuation, scattered) = result.unwrap();
@@ -234,7 +230,7 @@ mod tests {
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
             front_face: true,
-            material: Arc::new(dielectric),
+            material_id: 0,
         };
 
         // Ray coming from air hitting glass at a steep angle
@@ -244,7 +240,7 @@ mod tests {
             Vec3::new(0.5, 0.0, 1.0).normalized(),
         );
 
-        let result = hit.material.scatter(ray, &hit, &mut sampler);
+        let result = dielectric.scatter(ray, &hit, &mut sampler);
 
         assert!(result.is_some(), "Dielectric should scatter a ray");
         let (_attenuation, scattered) = result.unwrap();
@@ -268,7 +264,7 @@ mod tests {
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
             front_face: false, // Exiting the material
-            material: Arc::new(dielectric),
+            material_id: 0,
         };
 
         // Ray coming from glass (eta_i = 1.5) exiting to air (eta_t = 1.0)
@@ -278,7 +274,7 @@ mod tests {
             Vec3::new(0.8, 0.0, -1.0).normalized(),
         );
 
-        let result = hit.material.scatter(ray, &hit, &mut sampler);
+        let result = dielectric.scatter(ray, &hit, &mut sampler);
 
         assert!(result.is_some(), "Dielectric should scatter a ray");
         let (_attenuation, scattered) = result.unwrap();
@@ -325,12 +321,12 @@ mod tests {
             normal: Normal3::new(0.0, 0.0, 1.0),
             t: 1.0,
             front_face: true,
-            material: Arc::new(dielectric),
+            material_id: 0,
         };
 
         let ray = Ray::new(Point3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 0.0, 1.0));
 
-        let result = hit.material.scatter(ray, &hit, &mut sampler);
+        let result = dielectric.scatter(ray, &hit, &mut sampler);
 
         if let Some((attenuation, _)) = result {
             // Dielectric should scatter white light (1.0, 1.0, 1.0)

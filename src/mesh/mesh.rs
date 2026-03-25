@@ -1,21 +1,15 @@
-use std::{io::Read, sync::Arc};
+use std::io::Read;
 
 use log::{info, warn};
 
-use crate::{
-    Material,
-    math::{Point3, Triangle},
-};
+use crate::math::{Point3, Triangle};
 
 pub struct Mesh {
     pub triangles: Vec<Triangle>,
 }
 
 impl Mesh {
-    pub fn read_from_obj<R: Read>(
-        reader: &mut R,
-        material: Arc<dyn Material>,
-    ) -> Result<Self, String> {
+    pub fn read_from_obj<R: Read>(reader: &mut R, material_id: usize) -> Result<Self, String> {
         let mut contents = String::new();
         reader
             .read_to_string(&mut contents)
@@ -69,7 +63,7 @@ impl Mesh {
                         polygon.push(v);
                     }
 
-                    let tris = triangulate_fan(&polygon, material.clone());
+                    let tris = triangulate_fan(&polygon, material_id);
                     triangles.extend(tris);
                 }
                 "o" => {
@@ -144,7 +138,7 @@ fn try_parse_point(parts: Vec<&str>) -> Result<Point3, String> {
     Ok(Point3::new(x, y, z))
 }
 
-fn triangulate_fan(polygon: &[Point3], material: Arc<dyn Material>) -> Vec<Triangle> {
+fn triangulate_fan(polygon: &[Point3], material_id: usize) -> Vec<Triangle> {
     let mut triangles = Vec::new();
     let n = polygon.len();
 
@@ -153,7 +147,7 @@ fn triangulate_fan(polygon: &[Point3], material: Arc<dyn Material>) -> Vec<Trian
             p1: polygon[0],
             p2: polygon[i],
             p3: polygon[i + 1],
-            material: material.clone(),
+            material_id,
         };
         triangles.push(tri);
     }
@@ -163,14 +157,7 @@ fn triangulate_fan(polygon: &[Point3], material: Arc<dyn Material>) -> Vec<Trian
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
-    use crate::{Material, material::DummyMaterial};
-
-    fn material() -> Arc<dyn Material> {
-        Arc::new(DummyMaterial)
-    }
 
     #[test]
     fn load_obj_single_triangle() {
@@ -183,7 +170,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, material()).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
         assert_eq!(mesh.triangles.len(), 1);
     }
 
@@ -197,7 +184,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, material()).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
         assert_eq!(mesh.triangles.len(), 2);
     }
 
@@ -213,7 +200,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, material()).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
         assert_eq!(mesh.triangles.len(), 3);
     }
 
@@ -236,7 +223,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, material()).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
         assert_eq!(mesh.triangles.len(), 2);
     }
 
@@ -252,7 +239,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, material()).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
         assert_eq!(mesh.triangles.len(), 1);
     }
 }
