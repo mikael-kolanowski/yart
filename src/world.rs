@@ -7,8 +7,10 @@ use log::{info, warn};
 
 use crate::color::Color;
 use crate::math::BVH;
+use crate::math::Intersect;
 use crate::math::Primitive;
-use crate::math::{Point3, Sphere, Triangle};
+use crate::math::Ray;
+use crate::math::{Point3, Sphere, Triangle, interval::Interval};
 use crate::mesh::Mesh;
 use crate::rendering::Material;
 use crate::rendering::material::{Dielectric, DummyMaterial, Lambertian, Metal, NormalVisualizer};
@@ -24,8 +26,8 @@ pub struct SceneObject {
 }
 
 pub struct World {
-    pub bvh: BVH,
-    pub skybox: Box<dyn SkyBox>,
+    bvh: BVH,
+    skybox: Box<dyn SkyBox>,
     materials: Vec<Arc<dyn Material>>,
 }
 
@@ -143,6 +145,11 @@ impl World {
     pub fn lookup_material(&self, id: usize) -> Arc<dyn Material> {
         self.materials.get(id).unwrap_or(&self.materials[0]).clone()
     }
+
+    /// The color to return when the ray does not hit an object in the scene
+    pub fn sky(&self, ray: Ray) -> Color {
+        self.skybox.color(ray)
+    }
 }
 
 fn resolve_relative_path(base: &Path, path: &PathBuf) -> PathBuf {
@@ -168,6 +175,16 @@ fn build_skybox(config: &SkyConfig) -> Box<dyn SkyBox> {
         SkyConfig::Solid { color } => Box::new(SolidColorSkyBox {
             color: Color::from(*color),
         }),
+    }
+}
+
+impl Intersect for World {
+    fn intersect(&self, ray: &Ray, interval: Interval) -> Option<crate::math::Hit> {
+        self.bvh.intersect(ray, interval)
+    }
+
+    fn bounding_box(&self) -> crate::math::AABB {
+        self.bvh.bounding_box()
     }
 }
 

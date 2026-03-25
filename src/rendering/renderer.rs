@@ -34,7 +34,7 @@ impl Renderer {
         if max_bounces == 0 {
             return Color::BLACK;
         }
-        if let Some(hit_info) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY))
+        if let Some(hit) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY))
         {
             let material = world.lookup_material(hit.material_id);
             if let Some((attenuation, scattered)) = material.scatter(ray, &hit, sampler) {
@@ -44,7 +44,7 @@ impl Renderer {
             }
         }
 
-        world.skybox.color(ray)
+        world.sky(ray)
     }
 
     pub fn render(
