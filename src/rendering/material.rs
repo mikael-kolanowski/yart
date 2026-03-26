@@ -1,7 +1,68 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use log::warn;
+
 use crate::color::Color;
 use crate::math::Ray;
 use crate::math::{Hit, Vec3};
 use crate::rendering::sampler::Sampler;
+
+pub struct MaterialLibrary {
+    materials: Vec<Arc<dyn Material>>,
+    material_name_to_id: HashMap<String, usize>,
+}
+
+/// The source of truth for materials.
+/// Materials are identified by a name and an integer ID.
+/// The name is used by user-facing components while the renderer's
+/// core uses the numeric IDs-
+impl MaterialLibrary {
+    const FALLBACK_MATERIAL_ID: usize = 0;
+    pub fn new() -> Self {
+        let mut materials: Vec<Arc<dyn Material>> = Vec::new();
+        let material_name_to_id: HashMap<String, usize> = HashMap::new();
+        let fallback_material: Arc<dyn Material> = Arc::new(DummyMaterial {});
+        materials.push(fallback_material.clone());
+
+        Self {
+            materials,
+            material_name_to_id,
+        }
+    }
+
+    /// Return the number of registered materials in the library, not counting the fallback material.
+    pub fn size(&self) -> usize {
+        // Do not count the fallback material.
+        self.materials.len() - 1
+    }
+
+    /// Register a new named material
+    pub fn register_material(&mut self, name: &str, material: Arc<dyn Material>) {
+        self.material_name_to_id
+            .insert(name.to_string(), self.materials.len());
+        self.materials.push(material)
+    }
+
+    /// Lookup a material's ID by it's name.
+    /// The ID corresponding to the fallback maratial is returned if a no material with the
+    /// specified name exists.
+    pub fn lookup_material_id(&self, name: &str) -> usize {
+        *self.material_name_to_id.get(name).unwrap_or_else(|| {
+            warn!("material '{name}' could not be resolved'");
+            &MaterialLibrary::FALLBACK_MATERIAL_ID
+        })
+    }
+
+    /// Lookup a material by it's ID.
+    /// The fallback material is returned if no material with the given ID exists.
+    pub fn lookup_material(&self, id: usize) -> Arc<dyn Material> {
+        self.materials
+            .get(id)
+            .unwrap_or(&self.materials[Self::FALLBACK_MATERIAL_ID])
+            .clone()
+    }
+}
 
 pub trait Material {
     /// Returns the scannered ray and the color attenuation.

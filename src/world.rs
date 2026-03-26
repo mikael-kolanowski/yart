@@ -1,11 +1,12 @@
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
-use log::{info, warn};
+use log::info;
 
 use crate::color::Color;
+use crate::material::MaterialLibrary;
 use crate::math::BVH;
 use crate::math::Intersect;
 use crate::math::Primitive;
@@ -13,7 +14,7 @@ use crate::math::Ray;
 use crate::math::{Point3, Sphere, Triangle, interval::Interval};
 use crate::mesh::Mesh;
 use crate::rendering::Material;
-use crate::rendering::material::{Dielectric, DummyMaterial, Lambertian, Metal, NormalVisualizer};
+use crate::rendering::material::{Dielectric, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
 
 use crate::config::{Config, MaterialConfig, ObjectConfig, SkyConfig};
@@ -28,51 +29,13 @@ pub struct SceneObject {
 pub struct World {
     bvh: BVH,
     skybox: Box<dyn SkyBox>,
-    materials: Vec<Arc<dyn Material>>,
+    material_library: MaterialLibrary,
 }
 
 impl World {
     pub fn from_config(config: &Config, asset_base_path: &Path) -> Self {
-        let mut materials: Vec<Arc<dyn Material>> = Vec::new();
-        let mut material_name_to_id: HashMap<String, usize> = HashMap::new();
 
-        let fallback_material: Arc<dyn Material> = Arc::new(DummyMaterial {});
-        materials.push(fallback_material.clone());
-        const FALLBACK_MATERIAL_ID: usize = 0;
-
-        let mut register_material = |name: &String, mat: Arc<dyn Material>| {
-            material_name_to_id.insert(name.clone(), materials.len());
-            materials.push(mat);
-        };
-
-        for material_config in &config.materials {
-            match material_config {
-                MaterialConfig::Lambertian { name, albedo } => {
-                    let lamb = Lambertian::new(Color::from(*albedo));
-                    register_material(name, Arc::new(lamb));
-                }
-                MaterialConfig::Metal { name, albedo, fuzz } => {
-                    let metal = Metal::new(Color::from(*albedo), *fuzz);
-                    register_material(name, Arc::new(metal));
-                }
-                MaterialConfig::NormalVisualization { name } => {
-                    let mat = NormalVisualizer;
-                    register_material(name, Arc::new(mat));
-                }
-                MaterialConfig::Dielectric { name, ior } => {
-                    let dielectric = Dielectric::new(*ior);
-                    register_material(name, Arc::new(dielectric));
-                }
-            };
-        }
-
-        let material_name_to_id = material_name_to_id;
-        let lookup_material_id = |name: &String| {
-            material_name_to_id.get(name).unwrap_or_else(|| {
-                warn!("material '{name}' could not be resolved'");
-                &FALLBACK_MATERIAL_ID
-            })
-        };
+        let material_library = Self::build_material_library(&config);
 
         let mut primitives: Vec<Primitive> = Vec::new();
         for object_config in &config.objects {
@@ -82,11 +45,11 @@ impl World {
                     radius,
                     material,
                 } => {
-                    let material_id = lookup_material_id(material);
+                    let material_id = material_library.lookup_material_id(material);
                     let primitive = Primitive::Sphere(Sphere {
                         center: Point3(*position),
                         radius: *radius,
-                        material_id: *material_id,
+                        material_id: material_id,
                     });
                     primitives.push(primitive);
                 }
@@ -96,19 +59,19 @@ impl World {
                     p3,
                     material,
                 } => {
-                    let material_id = lookup_material_id(material);
+                    let material_id = material_library.lookup_material_id(material);
                     let primitive = Primitive::Triangle(Triangle {
                         p1: *p1,
                         p2: *p2,
                         p3: *p3,
-                        material_id: *material_id,
+                        material_id: material_id,
                     });
                     primitives.push(primitive);
                 }
                 ObjectConfig::Mesh { path, material } => {
-                    let material_id = lookup_material_id(material);
+                    let material_id = material_library.lookup_material_id(material);
                     let asset_path = resolve_relative_path(asset_base_path, path);
-                    match load_mesh_from_path(&asset_path, *material_id) {
+                    match load_mesh_from_path(&asset_path, material_id) {
                         Err(message) => {
                             eprintln!("{message}");
                         }
@@ -126,24 +89,50 @@ impl World {
         let skybox = build_skybox(&config.sky);
 
         let n_objects = primitives.len();
-        let n_materials = materials.len();
+        let n_materials = material_library.size();
         let bvh = BVH::build(primitives);
 
-        // Don't include the fallback meterial in the count
         info!(
             "constructed scene: {n_objects} objects, {} materials",
-            n_materials - 1
+            n_materials
         );
 
         World {
             bvh,
             skybox,
-            materials,
+            material_library,
         }
     }
 
+   fn build_material_library(config: &Config) -> MaterialLibrary {
+        let mut material_library = MaterialLibrary::new();
+
+        for material_config in &config.materials {
+            match material_config {
+                MaterialConfig::Lambertian { name, albedo } => {
+                    let lamb = Lambertian::new(Color::from(*albedo));
+                    material_library.register_material(name, Arc::new(lamb));
+                }
+                MaterialConfig::Metal { name, albedo, fuzz } => {
+                    let metal = Metal::new(Color::from(*albedo), *fuzz);
+                    material_library.register_material(name, Arc::new(metal));
+                }
+                MaterialConfig::NormalVisualization { name } => {
+                    let mat = NormalVisualizer;
+                    material_library.register_material(name, Arc::new(mat));
+                }
+                MaterialConfig::Dielectric { name, ior } => {
+                    let dielectric = Dielectric::new(*ior);
+                    material_library.register_material(name, Arc::new(dielectric));
+                }
+            };
+        }
+
+        material_library
+   } 
+
     pub fn lookup_material(&self, id: usize) -> Arc<dyn Material> {
-        self.materials.get(id).unwrap_or(&self.materials[0]).clone()
+        self.material_library.lookup_material(id)
     }
 
     /// The color to return when the ray does not hit an object in the scene
@@ -195,7 +184,7 @@ impl Default for World {
             skybox: Box::new(SolidColorSkyBox {
                 color: Color::WHITE,
             }),
-            materials: Vec::new(),
+            material_library: MaterialLibrary::new(),
         }
     }
 }

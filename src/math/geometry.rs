@@ -449,7 +449,6 @@ mod tests {
     use core::f64;
 
     use crate::math::Vec3;
-    use crate::rendering::material::DummyMaterial;
 
     use super::*;
 
