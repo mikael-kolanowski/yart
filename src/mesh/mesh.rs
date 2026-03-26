@@ -2,14 +2,30 @@ use std::io::Read;
 
 use log::{info, warn};
 
-use crate::math::{Point3, Triangle};
+use crate::{
+    material::MaterialLibrary,
+    math::{Point3, Triangle},
+};
 
 pub struct Mesh {
     pub triangles: Vec<Triangle>,
 }
 
 impl Mesh {
-    pub fn read_from_obj<R: Read>(reader: &mut R, material_id: usize) -> Result<Self, String> {
+    /// Parse an OBJ format into a mesh.
+    ///
+    /// # Arguments
+    /// * `reader` OBJ source
+    /// * `material_library` the material library to use when resolving materials
+    /// * `default_material_id` the ID of the material in `material_library` to use in the absence
+    ///     of `usemtl`
+    ///
+    /// `usemtl` directives are looked up in the provided material library.
+    pub fn read_from_obj<R: Read>(
+        reader: &mut R,
+        material_library: &MaterialLibrary,
+        default_material_id: usize,
+    ) -> Result<Self, String> {
         let mut contents = String::new();
         reader
             .read_to_string(&mut contents)
@@ -20,10 +36,12 @@ impl Mesh {
         let mut texture_coordinates: Vec<(f64, f64)> = Vec::new();
         let mut triangles: Vec<Triangle> = Vec::new();
 
+        let mut current_material_id = default_material_id;
+
         for line in contents.lines() {
             let line = line.trim();
-            // Skip comments
-            if line.starts_with("#") {
+            // Skip comments and empty lines
+            if line.starts_with("#") || line.is_empty() {
                 continue;
             }
             let (directive, args) = line.split_once(" ").ok_or("badly formatted line")?;
@@ -63,7 +81,7 @@ impl Mesh {
                         polygon.push(v);
                     }
 
-                    let tris = triangulate_fan(&polygon, material_id);
+                    let tris = triangulate_fan(&polygon, current_material_id);
                     triangles.extend(tris);
                 }
                 "o" => {
@@ -79,9 +97,8 @@ impl Mesh {
                 "usemtl" => {
                     // TODO: link with materials defined in the scene instead of assigning one
                     // material to the whole mesh.
-                    let material = args;
-                    info!("skipping looking up material: {material}");
-                    continue;
+                    let material_name = args;
+                    current_material_id = material_library.lookup_material_id(material_name);
                 }
                 _ => {
                     warn!("unknown directive: {}", directive);
@@ -157,6 +174,10 @@ fn triangulate_fan(polygon: &[Point3], material_id: usize) -> Vec<Triangle> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use crate::{color::Color, material::Lambertian};
+
     use super::*;
 
     #[test]
@@ -170,7 +191,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, &MaterialLibrary::new(), 0).unwrap();
         assert_eq!(mesh.triangles.len(), 1);
     }
 
@@ -184,7 +205,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, &MaterialLibrary::new(), 0).unwrap();
         assert_eq!(mesh.triangles.len(), 2);
     }
 
@@ -200,7 +221,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, &MaterialLibrary::new(), 0).unwrap();
         assert_eq!(mesh.triangles.len(), 3);
     }
 
@@ -223,7 +244,7 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, &MaterialLibrary::new(), 0).unwrap();
         assert_eq!(mesh.triangles.len(), 2);
     }
 
@@ -239,7 +260,54 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(source);
 
-        let mesh = Mesh::read_from_obj(&mut cursor, 0).unwrap();
+        let mesh = Mesh::read_from_obj(&mut cursor, &MaterialLibrary::new(), 0).unwrap();
         assert_eq!(mesh.triangles.len(), 1);
+    }
+
+    #[test]
+    fn load_mesh_with_different_materials() {
+        let mut material_library = MaterialLibrary::new();
+        let red = Arc::new(Lambertian::new(Color::new(1.0, 0.0, 0.0)));
+        let blue = Arc::new(Lambertian::new(Color::new(0.0, 0.0, 1.0)));
+        material_library.register_material("red", red);
+        material_library.register_material("blue", blue);
+
+        let source = "# test_usemtl.obj
+                      o TestMesh
+                      v 0.0 0.0 0.0
+                      v 1.0 0.0 0.0
+                      v 0.0 1.0 0.0
+
+                      v 0.0 0.0 1.0
+                      v 1.0 0.0 1.0
+                      v 0.0 1.0 1.0
+
+                      v 0.0 0.0 2.0
+                      v 1.0 0.0 2.0
+                      v 0.0 1.0 2.0
+
+                      f 1 2 3
+
+                      usemtl red
+                      f 4 5 6
+
+                      usemtl blue
+                      f 7 8 9";
+
+        let mut cursor = std::io::Cursor::new(source);
+
+        let mesh = Mesh::read_from_obj(&mut cursor, &material_library, 0).unwrap();
+        assert_eq!(mesh.triangles.len(), 3);
+
+        // Default material
+        assert_eq!(mesh.triangles[0].material_id, 0);
+        assert_eq!(
+            mesh.triangles[1].material_id,
+            material_library.lookup_material_id("red")
+        );
+        assert_eq!(
+            mesh.triangles[2].material_id,
+            material_library.lookup_material_id("blue")
+        );
     }
 }

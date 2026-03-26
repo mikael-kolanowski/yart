@@ -34,7 +34,6 @@ pub struct World {
 
 impl World {
     pub fn from_config(config: &Config, asset_base_path: &Path) -> Self {
-
         let material_library = Self::build_material_library(&config);
 
         let mut primitives: Vec<Primitive> = Vec::new();
@@ -71,7 +70,7 @@ impl World {
                 ObjectConfig::Mesh { path, material } => {
                     let material_id = material_library.lookup_material_id(material);
                     let asset_path = resolve_relative_path(asset_base_path, path);
-                    match load_mesh_from_path(&asset_path, material_id) {
+                    match load_mesh_from_path(&asset_path, &material_library, material_id) {
                         Err(message) => {
                             eprintln!("{message}");
                         }
@@ -104,7 +103,7 @@ impl World {
         }
     }
 
-   fn build_material_library(config: &Config) -> MaterialLibrary {
+    fn build_material_library(config: &Config) -> MaterialLibrary {
         let mut material_library = MaterialLibrary::new();
 
         for material_config in &config.materials {
@@ -129,7 +128,7 @@ impl World {
         }
 
         material_library
-   } 
+    }
 
     pub fn lookup_material(&self, id: usize) -> Arc<dyn Material> {
         self.material_library.lookup_material(id)
@@ -149,9 +148,13 @@ fn resolve_relative_path(base: &Path, path: &PathBuf) -> PathBuf {
     }
 }
 
-fn load_mesh_from_path(path: &PathBuf, material_id: usize) -> Result<Mesh, String> {
+fn load_mesh_from_path(
+    path: &PathBuf,
+    material_library: &MaterialLibrary,
+    material_id: usize,
+) -> Result<Mesh, String> {
     let mut file = File::open(&path).map_err(|_| format!("could not open file {:?}", path))?;
-    let mesh = Mesh::read_from_obj(&mut file, material_id)?;
+    let mesh = Mesh::read_from_obj(&mut file, material_library, material_id)?;
     Ok(mesh)
 }
 
