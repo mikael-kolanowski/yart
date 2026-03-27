@@ -168,6 +168,7 @@ pub struct AABB {
 }
 
 impl AABB {
+    /// Creates an empty AABB representing no volume.
     pub fn new() -> Self {
         Self {
             x: Interval::EMPTY,
@@ -175,6 +176,9 @@ impl AABB {
             z: Interval::EMPTY,
         }
     }
+
+    /// Creates an AABB from two opposite corner points.
+    /// The points need not be in any particular order (min/max are computed automatically).
     fn from_extrema(a: Point3, b: Point3) -> Self {
         let x = {
             if a.0.x <= b.0.x {
@@ -211,6 +215,8 @@ impl AABB {
         }
     }
 
+    /// Combines two AABBs into a single AABB that encompasses both.
+    /// The resulting box has intervals spanning from the min of each to the max of each.
     pub fn from_boxes(a: Self, b: Self) -> Self {
         let x = Interval::from(a.x, b.x);
         let y = Interval::from(a.y, b.y);
