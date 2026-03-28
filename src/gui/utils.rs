@@ -11,6 +11,7 @@ fn material_label(mat: &MaterialConfig) -> String {
         MaterialConfig::Metal { .. } => "metal".into(),
         MaterialConfig::NormalVisualization { .. } => "normal_vis".into(),
         MaterialConfig::Dielectric { .. } => "dielectric".into(),
+        MaterialConfig::DiffuseLight { .. } => "diffuse_light".into(),
     }
 }
 

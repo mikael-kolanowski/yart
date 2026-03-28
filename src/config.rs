@@ -136,6 +136,17 @@ pub enum MaterialConfig {
         #[serde(default = "default_ior")]
         ior: f64,
     },
+
+    #[serde(rename = "diffuse_light")]
+    DiffuseLight {
+        name: String,
+        #[serde(
+            serialize_with = "serialize_vec3",
+            deserialize_with = "deserialize_vec3"
+        )]
+        albedo: Vec3,
+        strength: f64,
+    },
 }
 
 fn default_ior() -> f64 {
@@ -199,6 +210,7 @@ impl MaterialConfig {
             MaterialConfig::Metal { name, .. } => name,
             MaterialConfig::NormalVisualization { name } => name,
             MaterialConfig::Dielectric { name, .. } => name,
+            MaterialConfig::DiffuseLight { name, .. } => name,
         }
     }
 
@@ -208,6 +220,7 @@ impl MaterialConfig {
             MaterialConfig::Metal { .. } => "Metal",
             MaterialConfig::NormalVisualization { .. } => "Normal Visualization",
             MaterialConfig::Dielectric { .. } => "Dielectric",
+            MaterialConfig::DiffuseLight { .. } => "Diffuse Light",
         }
     }
 }

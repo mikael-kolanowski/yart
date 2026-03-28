@@ -127,6 +127,26 @@ pub fn material(ui: &mut egui::Ui, mat: &mut MaterialConfig) {
                 ui.label("Index of Refraction:");
                 ui.add(egui::Slider::new(ior, 1.0..=2.5));
             }
+            MaterialConfig::DiffuseLight {
+                name,
+                albedo,
+                strength,
+            } => {
+                ui.label("Type:");
+                ui.label("Diffuse Light");
+                ui.end_row();
+
+                ui.label("Name:");
+                ui.text_edit_singleline(name);
+                ui.end_row();
+
+                ui.label("Albedo:");
+                widgets::color_input(ui, albedo);
+                ui.end_row();
+
+                ui.label("Strength:");
+                ui.add(egui::DragValue::new(strength).range(0.0..=100.0).speed(0.1));
+            }
         });
 }
 

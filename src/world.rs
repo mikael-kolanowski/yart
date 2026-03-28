@@ -6,6 +6,7 @@ use std::sync::Arc;
 use log::info;
 
 use crate::color::Color;
+use crate::material::DiffuseLight;
 use crate::material::MaterialLibrary;
 use crate::math::BVH;
 use crate::math::Intersect;
@@ -123,6 +124,14 @@ impl World {
                 MaterialConfig::Dielectric { name, ior } => {
                     let dielectric = Dielectric::new(*ior);
                     material_library.register_material(name, Arc::new(dielectric));
+                }
+                MaterialConfig::DiffuseLight {
+                    name,
+                    albedo,
+                    strength,
+                } => {
+                    let diffuse_light = DiffuseLight::new(Color::from(*albedo), *strength);
+                    material_library.register_material(name, Arc::new(diffuse_light));
                 }
             };
         }

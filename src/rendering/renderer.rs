@@ -34,16 +34,37 @@ impl Renderer {
         if max_bounces == 0 {
             return Color::BLACK;
         }
-        if let Some(hit) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY)) {
-            let material = world.lookup_material(hit.material_id);
-            if let Some((attenuation, scattered)) = material.scatter(ray, &hit, sampler) {
-                return attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler);
-            } else {
-                return material.emitted(&hit);
-            }
-        }
 
-        world.sky(ray)
+        let hit = world.intersect(&ray, Interval::new(0.001, f64::INFINITY));
+        if hit.is_none() {
+            return world.sky(ray);
+        }
+        let hit = hit.unwrap();
+
+        let material = world.lookup_material(hit.material_id);
+
+        let color_from_emission = material.emitted(&hit);
+
+        let color_from_scatter = {
+            if let Some((attenuation, scattered)) = material.scatter(ray, &hit, sampler) {
+                attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler)
+            } else {
+                Color::BLACK
+            }
+        };
+
+        color_from_emission + color_from_scatter
+
+        // if let Some(hit) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY)) {
+        //     let material = world.lookup_material(hit.material_id);
+        //     if let Some((attenuation, scattered)) = material.scatter(ray, &hit, sampler) {
+        //         return attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler);
+        //     } else {
+        //         return material.emitted(&hit);
+        //     }
+        // }
+        //
+        // world.sky(ray)
     }
 
     pub fn render(

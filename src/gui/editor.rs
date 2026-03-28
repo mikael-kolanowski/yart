@@ -223,6 +223,9 @@ impl Editor {
                             MaterialConfig::Dielectric { name, .. } => {
                                 format!("{} (Dielectric)", name)
                             }
+                            MaterialConfig::DiffuseLight { name, .. } => {
+                                format!("{} (Diffuse Light)", name)
+                            }
                         };
 
                         let is_selected = self.selected_material == Some(i);

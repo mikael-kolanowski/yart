@@ -263,7 +263,6 @@ fn material_type_selector(
         egui::ComboBox::from_id_salt("material_type_dialog")
             .selected_text(mat.display_name())
             .show_ui(ui, |ui| {
-                // Lambertian option
                 let lambertian_name = utils::new_material_name("lambertian", existing);
                 ui.selectable_value(
                     mat,
@@ -274,7 +273,6 @@ fn material_type_selector(
                     "Lambertian",
                 );
 
-                // Metal option
                 let metal_name = utils::new_material_name("metal", existing);
                 ui.selectable_value(
                     mat,
@@ -286,7 +284,6 @@ fn material_type_selector(
                     "Metal",
                 );
 
-                // Normal Visualization option
                 let normal_vis_name = utils::new_material_name("normal_vis", existing);
                 ui.selectable_value(
                     mat,
@@ -304,6 +301,17 @@ fn material_type_selector(
                         ior: 1.5,
                     },
                     "Dielectric",
+                );
+
+                let diffuse_light_name = utils::new_material_name("diffuse_light", existing);
+                ui.selectable_value(
+                    mat,
+                    MaterialConfig::DiffuseLight {
+                        name: diffuse_light_name,
+                        albedo: Vec3::new(1.0, 1.0, 1.0),
+                        strength: 1.0,
+                    },
+                    "Diffuse Light",
                 );
             });
     });

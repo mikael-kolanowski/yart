@@ -216,6 +216,26 @@ impl Material for Dielectric {
     }
 }
 
+pub struct DiffuseLight {
+    pub albedo: Color,
+    pub strength: f64,
+}
+
+impl DiffuseLight {
+    pub fn new(albedo: Color, strength: f64) -> Self {
+        Self { albedo, strength }
+    }
+}
+
+impl Material for DiffuseLight {
+    fn scatter(&self, _ray: Ray, _hit: &Hit, _sampler: &mut dyn Sampler) -> Option<(Color, Ray)> {
+        None
+    }
+    fn emitted(&self, _hit: &Hit) -> Color {
+        self.albedo * self.strength
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,7 +243,6 @@ mod tests {
     use crate::math::Point3;
     use crate::rendering::sampler::RandomSampler;
     use rand::SeedableRng;
-    use std::sync::Arc;
 
     #[test]
     fn test_dielectric_refraction() {
