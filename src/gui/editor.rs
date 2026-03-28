@@ -84,6 +84,10 @@ impl Editor {
                 aspect_ratio: preview_aspect_ratio,
                 ..self.config.camera.clone()
             },
+            renderer: crate::RendererConfig {
+                max_bounces: self.viewport_renderer.max_bounces,
+                samples_per_pixel: self.viewport_renderer.samples_per_pixel,
+            },
             ..self.config.clone()
         };
 
