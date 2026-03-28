@@ -34,8 +34,7 @@ impl Renderer {
         if max_bounces == 0 {
             return Color::BLACK;
         }
-        if let Some(hit) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY))
-        {
+        if let Some(hit) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY)) {
             let material = world.lookup_material(hit.material_id);
             if let Some((attenuation, scattered)) = material.scatter(ray, &hit, sampler) {
                 return attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler);

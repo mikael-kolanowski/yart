@@ -2,10 +2,10 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-use serde::de::{self, Deserializer};
 use serde::Deserialize;
 use serde::Serialize;
 use serde::Serializer;
+use serde::de::{self, Deserializer};
 
 use crate::math::{Point3, Vec3};
 
