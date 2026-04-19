@@ -141,6 +141,10 @@ impl Editor {
             self.help_dialog.open();
         }
 
+        if self.shortcuts.is_pressed(ctx, &self.shortcuts.new_scene) {
+            self.handle_new_scene();
+        }
+
         if self.shortcuts.is_pressed(ctx, &self.shortcuts.load_scene) {
             self.handle_load_scene();
         }
@@ -148,7 +152,10 @@ impl Editor {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("Load Scene").clicked() {
+                    if ui.button("New Scene").clicked() {
+                        self.handle_new_scene();
+                    }
+                    if ui.button("Open Scene").clicked() {
                         self.handle_load_scene();
                     }
                     if ui.button("Save Scene").clicked() {
@@ -377,6 +384,11 @@ impl Editor {
 
         // Help Dialog
         self.help_dialog.show(ctx, &self.shortcuts);
+    }
+
+    fn handle_new_scene(&mut self) {
+        // TODO: check of dirtyness.
+        self.config = utils::default_config();
     }
 
     fn handle_load_scene(&mut self) {

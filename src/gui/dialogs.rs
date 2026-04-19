@@ -40,6 +40,7 @@ impl HelpDialog {
                         for shortcut in vec![
                             shortcuts.show_help.clone(),
                             shortcuts.render_preview.clone(),
+                            shortcuts.new_scene.clone(),
                             shortcuts.load_scene.clone(),
                             shortcuts.save_scene.clone(),
                         ] {
