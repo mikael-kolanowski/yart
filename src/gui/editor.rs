@@ -25,6 +25,8 @@ pub struct Editor {
     preview_texture: Option<egui::TextureHandle>,
     selected_object: Option<usize>,
     selected_material: Option<usize>,
+    pending_object_deletion: Option<usize>,
+    pending_material_deletion: Option<usize>,
 
     // Dialogs
     add_object_dialog: AddObjectDialog,
@@ -48,6 +50,8 @@ impl Editor {
             preview_texture: None,
             selected_object: None,
             selected_material: None,
+            pending_object_deletion: None,
+            pending_material_deletion: None,
             add_object_dialog: AddObjectDialog::new(),
             add_material_dialog: AddMaterialDialog::new(),
             help_dialog: HelpDialog::new(),
@@ -210,10 +214,17 @@ impl Editor {
                         };
 
                         let is_selected = self.selected_object == Some(i);
-                        if ui.selectable_label(is_selected, label).clicked() {
+
+                        let response = ui.selectable_label(is_selected, label);
+                        if response.clicked() {
                             self.selected_object = Some(i);
                             self.selected_material = None;
                         }
+                        response.context_menu(|ui| {
+                            if ui.button("Delete").clicked() {
+                                self.pending_object_deletion = Some(i);
+                            }
+                        });
                     }
                 });
 
@@ -240,15 +251,32 @@ impl Editor {
                         };
 
                         let is_selected = self.selected_material == Some(i);
-                        if ui.selectable_label(is_selected, label).clicked() {
+
+                        let response = ui.selectable_label(is_selected, label);
+                        if response.clicked() {
                             self.selected_material = Some(i);
                             self.selected_object = None;
                         }
+                        response.context_menu(|ui| {
+                            if ui.button("Delete").clicked() {
+                                self.pending_material_deletion = Some(i);
+                            }
+                        });
                     }
                 });
 
             ui.separator();
         });
+
+        // Process pending deletions
+        if let Some(object_index_to_delete) = self.pending_object_deletion {
+            self.pending_object_deletion = None;
+            self.config.objects.remove(object_index_to_delete);
+        }
+        if let Some(material_index_to_delete) = self.pending_material_deletion {
+            self.pending_material_deletion = None;
+            self.config.materials.remove(material_index_to_delete);
+        }
     }
 
     fn ui_right_panel(&mut self, ctx: &egui::Context) {
