@@ -38,10 +38,10 @@ pub fn validate_object(obj: &ObjectConfig, materials: &[MaterialConfig]) -> Resu
         return Err("Material not found".to_string());
     }
 
-    if let ObjectConfig::Mesh { path, .. } = obj {
-        if path.as_os_str().is_empty() {
-            return Err("Mesh path is required".to_string());
-        }
+    if let ObjectConfig::Mesh { path, .. } = obj
+        && path.as_os_str().is_empty()
+    {
+        return Err("Mesh path is required".to_string());
     }
 
     Ok(())

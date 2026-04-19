@@ -48,13 +48,12 @@ pub fn object(ui: &mut egui::Ui, obj: &mut ObjectConfig, materials: &[MaterialCo
 
                 ui.label("Path:");
                 ui.text_edit_singleline(&mut display_path);
-                if ui.button("Browse").clicked() {
-                    if let Some(selected_path) = rfd::FileDialog::new()
+                if ui.button("Browse").clicked()
+                    && let Some(selected_path) = rfd::FileDialog::new()
                         .add_filter("OBJ files", &["obj"])
                         .pick_file()
-                    {
-                        display_path = selected_path.display().to_string();
-                    }
+                {
+                    display_path = selected_path.display().to_string();
                 }
                 *path = PathBuf::from(display_path);
                 ui.end_row();

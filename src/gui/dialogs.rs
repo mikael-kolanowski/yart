@@ -37,7 +37,7 @@ impl HelpDialog {
                     .num_columns(2)
                     .spacing([20.0, 5.0])
                     .show(ui, |ui| {
-                        for shortcut in vec![
+                        for shortcut in [
                             shortcuts.show_help.clone(),
                             shortcuts.render_preview.clone(),
                             shortcuts.new_scene.clone(),
@@ -120,14 +120,14 @@ impl AddObjectDialog {
                     if ui.button("Cancel").clicked() {
                         close_requested = true;
                     }
-                    if ui.button("Add").clicked() {
-                        if let Some(ref obj) = self.pending {
-                            if let Err(e) = utils::validate_object(obj, materials) {
-                                self.error = Some(e);
-                            } else {
-                                result = Some(obj.clone());
-                                close_requested = true;
-                            }
+                    if ui.button("Add").clicked()
+                        && let Some(ref obj) = self.pending
+                    {
+                        if let Err(e) = utils::validate_object(obj, materials) {
+                            self.error = Some(e);
+                        } else {
+                            result = Some(obj.clone());
+                            close_requested = true;
                         }
                     }
                 });
@@ -195,14 +195,14 @@ impl AddMaterialDialog {
                     if ui.button("Cancel").clicked() {
                         close_requested = true;
                     }
-                    if ui.button("Add").clicked() {
-                        if let Some(ref mat) = self.pending {
-                            if let Err(e) = utils::validate_material(mat, materials) {
-                                self.error = Some(e);
-                            } else {
-                                result = Some(mat.clone());
-                                close_requested = true;
-                            }
+                    if ui.button("Add").clicked()
+                        && let Some(ref mat) = self.pending
+                    {
+                        if let Err(e) = utils::validate_material(mat, materials) {
+                            self.error = Some(e);
+                        } else {
+                            result = Some(mat.clone());
+                            close_requested = true;
                         }
                     }
                 });
