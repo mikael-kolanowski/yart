@@ -35,7 +35,7 @@ pub struct World {
 
 impl World {
     pub fn from_config(config: &Config, asset_base_path: &Path) -> Self {
-        let material_library = Self::build_material_library(&config);
+        let material_library = Self::build_material_library(config);
 
         let mut primitives: Vec<Primitive> = Vec::new();
         for object_config in &config.objects {
@@ -49,7 +49,7 @@ impl World {
                     let primitive = Primitive::Sphere(Sphere {
                         center: Point3(*position),
                         radius: *radius,
-                        material_id: material_id,
+                        material_id,
                     });
                     primitives.push(primitive);
                 }
@@ -64,7 +64,7 @@ impl World {
                         p1: *p1,
                         p2: *p2,
                         p3: *p3,
-                        material_id: material_id,
+                        material_id,
                     });
                     primitives.push(primitive);
                 }
@@ -162,7 +162,7 @@ fn load_mesh_from_path(
     material_library: &MaterialLibrary,
     material_id: usize,
 ) -> Result<Mesh, String> {
-    let mut file = File::open(&path).map_err(|_| format!("could not open file {:?}", path))?;
+    let mut file = File::open(path).map_err(|_| format!("could not open file {:?}", path))?;
     let mesh = Mesh::read_from_obj(&mut file, material_library, material_id)?;
     Ok(mesh)
 }
