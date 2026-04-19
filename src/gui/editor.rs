@@ -396,8 +396,13 @@ impl Editor {
             .add_filter("TOML files", &["toml"])
             .pick_file()
         {
-            if let Ok(config) = Config::from_path(path.as_path()) {
+            let config_path = path.as_path();
+            if let Ok(config) = Config::from_path(config_path) {
                 self.load_config(config);
+                // The directory containing the config becomes the new asset base path.
+                if let Some(parent) = config_path.parent() {
+                    self.asset_base_path = parent.to_path_buf();
+                }
             }
         }
     }
