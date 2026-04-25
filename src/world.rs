@@ -3,6 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use log::error;
 use log::info;
 
 use crate::color::Color;
@@ -13,7 +14,7 @@ use crate::math::Intersect;
 use crate::math::Primitive;
 use crate::math::Ray;
 use crate::math::{Point3, Sphere, Triangle, interval::Interval};
-use crate::mesh::Mesh;
+use crate::mesh::{Mesh, ObjParseError};
 use crate::rendering::Material;
 use crate::rendering::material::{Dielectric, Lambertian, Metal, NormalVisualizer};
 use crate::rendering::sky::SkyBox;
@@ -73,7 +74,7 @@ impl World {
                     let asset_path = resolve_relative_path(asset_base_path, path);
                     match load_mesh_from_path(&asset_path, &material_library, material_id) {
                         Err(message) => {
-                            eprintln!("{message}");
+                            error!("{message}");
                         }
                         Ok(mesh) => {
                             for tri in mesh.triangles {
@@ -161,8 +162,9 @@ fn load_mesh_from_path(
     path: &PathBuf,
     material_library: &MaterialLibrary,
     material_id: usize,
-) -> Result<Mesh, String> {
-    let mut file = File::open(path).map_err(|_| format!("could not open file {:?}", path))?;
+) -> Result<Mesh, ObjParseError> {
+    let mut file =
+        File::open(path).map_err(|_| ObjParseError::unable_to_open_file(path.to_path_buf()))?;
     let mesh = Mesh::read_from_obj(&mut file, material_library, material_id)?;
     Ok(mesh)
 }

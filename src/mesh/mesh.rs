@@ -1,4 +1,5 @@
 use std::io::Read;
+use std::path::PathBuf;
 
 use log::{info, warn};
 
@@ -6,6 +7,103 @@ use crate::{
     material::MaterialLibrary,
     math::{Point3, Triangle},
 };
+
+#[derive(Debug)]
+enum ObjParseErrorKind {
+    OpenError(PathBuf),
+    ReadError,
+    BadLine,
+    BadFloat(String),
+    BadIndex(String),
+    BadVertex(usize),
+}
+
+#[derive(Debug)]
+pub struct ObjParseError {
+    kind: ObjParseErrorKind,
+    line: u32,
+}
+
+impl ObjParseError {
+    pub fn unable_to_open_file(path: PathBuf) -> Self {
+        Self {
+            kind: ObjParseErrorKind::OpenError(path),
+            line: 0,
+        }
+    }
+
+    fn unable_to_read_file(context: &Context) -> Self {
+        Self {
+            kind: ObjParseErrorKind::ReadError,
+            line: context.line,
+        }
+    }
+
+    fn bad_line(context: &Context) -> Self {
+        Self {
+            kind: ObjParseErrorKind::BadLine,
+            line: context.line,
+        }
+    }
+
+    fn bad_float(context: &Context, value: &str) -> Self {
+        Self {
+            kind: ObjParseErrorKind::BadFloat(value.to_owned()),
+            line: context.line,
+        }
+    }
+
+    fn bad_index(context: &Context, value: &str) -> Self {
+        Self {
+            kind: ObjParseErrorKind::BadIndex(value.to_owned()),
+            line: context.line,
+        }
+    }
+
+    fn bad_vertex(context: &Context, index: usize) -> Self {
+        Self {
+            kind: ObjParseErrorKind::BadVertex(index),
+            line: context.line,
+        }
+    }
+}
+
+impl std::fmt::Display for ObjParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.kind {
+            ObjParseErrorKind::OpenError(path) => {
+                write!(f, "unable to open file: {}", path.to_str().unwrap_or(""))
+            }
+            ObjParseErrorKind::ReadError => write!(f, "unable to read OBJ file"),
+            ObjParseErrorKind::BadLine => write!(f, "line {}: badly formatted line", self.line),
+            ObjParseErrorKind::BadFloat(value) => {
+                write!(f, "line {}: unable to parse float '{}'", self.line, value)
+            }
+            ObjParseErrorKind::BadIndex(value) => {
+                write!(f, "line {}: unable to parse index '{}'", self.line, value)
+            }
+            ObjParseErrorKind::BadVertex(index) => write!(
+                f,
+                "line {}: unable to get vertex at index {}",
+                self.line, index
+            ),
+        }
+    }
+}
+
+pub struct Context {
+    material_id: usize,
+    line: u32,
+}
+
+impl Context {
+    pub fn new(material_id: usize) -> Self {
+        return Self {
+            material_id,
+            line: 1,
+        };
+    }
+}
 
 pub struct Mesh {
     pub triangles: Vec<Triangle>,
@@ -25,18 +123,18 @@ impl Mesh {
         reader: &mut R,
         material_library: &MaterialLibrary,
         default_material_id: usize,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, ObjParseError> {
+        let mut context = Context::new(default_material_id);
+
         let mut contents = String::new();
         reader
             .read_to_string(&mut contents)
-            .map_err(|_| "unable to read obj contents")?;
+            .map_err(|_| ObjParseError::unable_to_read_file(&context))?;
 
         let mut vertices: Vec<Point3> = Vec::new();
         let mut normal_vertices: Vec<Point3> = Vec::new();
         let mut texture_coordinates: Vec<(f64, f64)> = Vec::new();
         let mut triangles: Vec<Triangle> = Vec::new();
-
-        let mut current_material_id = default_material_id;
 
         for line in contents.lines() {
             let line = line.trim();
@@ -44,28 +142,32 @@ impl Mesh {
             if line.starts_with("#") || line.is_empty() {
                 continue;
             }
-            let (directive, args) = line.split_once(" ").ok_or("badly formatted line")?;
+            let (directive, args) = line
+                .split_once(char::is_whitespace)
+                .ok_or(ObjParseError::bad_line(&context))?;
             match directive {
                 "v" => {
-                    let parts: Vec<&str> = args.split(" ").collect();
-                    let point = try_parse_point(parts)?;
+                    let parts: Vec<&str> = args.split_whitespace().collect();
+                    let point = try_parse_point(parts, &context)?;
                     vertices.push(point);
                 }
                 "vn" => {
-                    let parts: Vec<&str> = args.split(" ").collect();
-                    let point = try_parse_point(parts)?;
+                    let parts: Vec<&str> = args.split_whitespace().collect();
+                    let point = try_parse_point(parts, &context)?;
                     normal_vertices.push(point);
                 }
                 "vt" => {
-                    let parts: Vec<&str> = args.split(" ").collect();
-                    let u = try_parse_f64(parts[0])?;
-                    let v = try_parse_f64(parts.get(1).unwrap_or(&"0"))?;
+                    let parts: Vec<&str> = args.split_whitespace().collect();
+                    let u = try_parse_f64(parts[0], &context)?;
+                    let v = try_parse_f64(parts.get(1).unwrap_or(&"0"), &context)?;
                     texture_coordinates.push((u, v));
                 }
                 "f" => {
-                    let parts: Vec<&str> = args.split(" ").collect();
-                    let indices: Result<Vec<ObjFaceVertex>, _> =
-                        parts.iter().map(|p| try_parse_face_vertex(p)).collect();
+                    let parts: Vec<&str> = args.split_whitespace().collect();
+                    let indices: Result<Vec<ObjFaceVertex>, _> = parts
+                        .iter()
+                        .map(|p| try_parse_face_vertex(p, &context))
+                        .collect();
                     let indices = indices?;
 
                     if indices.len() < 3 {
@@ -77,11 +179,11 @@ impl Mesh {
                     for face_vertex in &indices {
                         let v = *vertices
                             .get(face_vertex.v - 1)
-                            .ok_or("unable to get vertex at index")?;
+                            .ok_or(ObjParseError::bad_vertex(&context, face_vertex.v))?;
                         polygon.push(v);
                     }
 
-                    let tris = triangulate_fan(&polygon, current_material_id);
+                    let tris = triangulate_fan(&polygon, &context);
                     triangles.extend(tris);
                 }
                 "o" => {
@@ -95,15 +197,14 @@ impl Mesh {
                     continue;
                 }
                 "usemtl" => {
-                    // TODO: link with materials defined in the scene instead of assigning one
-                    // material to the whole mesh.
                     let material_name = args;
-                    current_material_id = material_library.lookup_material_id(material_name);
+                    context.material_id = material_library.lookup_material_id(material_name);
                 }
                 _ => {
                     warn!("unknown directive: {}", directive);
                 }
             }
+            context.line += 1;
         }
 
         info!("loaded mesh: {} triangles", triangles.len());
@@ -111,14 +212,12 @@ impl Mesh {
     }
 }
 
-fn try_parse_f64(s: &str) -> Result<f64, &'static str> {
-    s.parse()
-        .map_err(|_| "unable to parse float in vertex definition")
+fn try_parse_f64(s: &str, context: &Context) -> Result<f64, ObjParseError> {
+    s.parse().map_err(|_| ObjParseError::bad_float(context, s))
 }
 
-fn try_parse_usize(s: &str) -> Result<usize, &'static str> {
-    s.parse()
-        .map_err(|_| "unable to parse index in face definition")
+fn try_parse_usize(s: &str, context: &Context) -> Result<usize, ObjParseError> {
+    s.parse().map_err(|_| ObjParseError::bad_index(&context, s))
 }
 
 #[derive(Default)]
@@ -128,9 +227,9 @@ struct ObjFaceVertex {
     vn: Option<usize>,
 }
 
-fn try_parse_face_vertex(s: &str) -> Result<ObjFaceVertex, &'static str> {
+fn try_parse_face_vertex(s: &str, context: &Context) -> Result<ObjFaceVertex, ObjParseError> {
     let parts: Vec<&str> = s.split('/').collect();
-    let v = try_parse_usize(parts[0])?;
+    let v = try_parse_usize(parts[0], context)?;
 
     let mut face_vertex = ObjFaceVertex {
         v,
@@ -138,24 +237,24 @@ fn try_parse_face_vertex(s: &str) -> Result<ObjFaceVertex, &'static str> {
     };
 
     if parts.len() > 1 && !parts[1].is_empty() {
-        face_vertex.vt = Some(try_parse_usize(parts[1])?);
+        face_vertex.vt = Some(try_parse_usize(parts[1], context)?);
     }
 
     if parts.len() > 2 && !parts[2].is_empty() {
-        face_vertex.vn = Some(try_parse_usize(parts[2])?);
+        face_vertex.vn = Some(try_parse_usize(parts[2], context)?);
     }
 
     Ok(face_vertex)
 }
 
-fn try_parse_point(parts: Vec<&str>) -> Result<Point3, String> {
-    let x = try_parse_f64(parts[0])?;
-    let y = try_parse_f64(parts[1])?;
-    let z = try_parse_f64(parts[2])?;
+fn try_parse_point(parts: Vec<&str>, context: &Context) -> Result<Point3, ObjParseError> {
+    let x = try_parse_f64(parts[0], context)?;
+    let y = try_parse_f64(parts[1], context)?;
+    let z = try_parse_f64(parts[2], context)?;
     Ok(Point3::new(x, y, z))
 }
 
-fn triangulate_fan(polygon: &[Point3], material_id: usize) -> Vec<Triangle> {
+fn triangulate_fan(polygon: &[Point3], context: &Context) -> Vec<Triangle> {
     let mut triangles = Vec::new();
     let n = polygon.len();
 
@@ -164,7 +263,7 @@ fn triangulate_fan(polygon: &[Point3], material_id: usize) -> Vec<Triangle> {
             p1: polygon[0],
             p2: polygon[i],
             p3: polygon[i + 1],
-            material_id,
+            material_id: context.material_id,
         };
         triangles.push(tri);
     }
