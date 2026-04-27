@@ -98,7 +98,7 @@ impl Editor {
         let (camera, world, renderer) =
             load_scene_from_config(&preview_config, &self.asset_base_path);
 
-        let image = renderer.render(&world, &camera, &mut sampler, false);
+        let image = renderer.render(&world, &camera, &mut sampler, true);
 
         let width = image.width as usize;
         let height = image.height as usize;
