@@ -54,17 +54,6 @@ impl Renderer {
         };
 
         color_from_emission + color_from_scatter
-
-        // if let Some(hit) = world.intersect(&ray, Interval::new(0.001, f64::INFINITY)) {
-        //     let material = world.lookup_material(hit.material_id);
-        //     if let Some((attenuation, scattered)) = material.scatter(ray, &hit, sampler) {
-        //         return attenuation * self.ray_color(scattered, max_bounces - 1, world, sampler);
-        //     } else {
-        //         return material.emitted(&hit);
-        //     }
-        // }
-        //
-        // world.sky(ray)
     }
 
     pub fn render(
