@@ -17,8 +17,9 @@ pub fn load_scene_from_config(
     config: &Config,
     asset_base_path: &Path,
 ) -> (Camera, World, Renderer) {
+    let aspect_ratio = config.camera.aspect_ratio.0 as f64 / config.camera.aspect_ratio.1 as f64;
     let camera = Camera::new(
-        config.camera.aspect_ratio,
+        aspect_ratio,
         config.image.width,
         config.camera.field_of_view,
         config.camera.position,

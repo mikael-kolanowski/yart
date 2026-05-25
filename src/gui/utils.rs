@@ -65,7 +65,7 @@ pub fn validate_material(mat: &MaterialConfig, existing: &[MaterialConfig]) -> R
 pub fn default_config() -> Config {
     Config {
         camera: crate::config::CameraConfig {
-            aspect_ratio: 16.0 / 9.0,
+            aspect_ratio: (16, 9),
             field_of_view: 90,
             position: Point3::new(-1.0, 1.0, 1.0),
             look_at: Point3::new(0.0, 0.0, -1.0),

@@ -155,11 +155,11 @@ pub fn camera(ui: &mut egui::Ui, camera: &mut crate::config::CameraConfig) {
         .striped(true)
         .show(ui, |ui| {
             ui.label("Aspect Ratio:");
-            ui.add(
-                egui::DragValue::new(&mut camera.aspect_ratio)
-                    .range(0.25..=4.0)
-                    .speed(0.1),
-            );
+            ui.horizontal(|ui| {
+                ui.add(egui::DragValue::new(&mut camera.aspect_ratio.0).range(1..=10000).speed(1));
+                ui.label(":");
+                ui.add(egui::DragValue::new(&mut camera.aspect_ratio.1).range(1..=10000).speed(1));
+            });
             ui.end_row();
 
             ui.label("Field of View:");

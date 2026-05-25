@@ -81,11 +81,9 @@ impl Editor {
 
         let preview_width = available_size.max.x;
         let preview_height = available_size.max.y;
-        let preview_aspect_ratio = (preview_width / preview_height) as f64;
-
         let preview_config = Config {
             camera: crate::CameraConfig {
-                aspect_ratio: preview_aspect_ratio,
+                aspect_ratio: (preview_width as u32, preview_height as u32),
                 ..self.config.camera.clone()
             },
             renderer: crate::RendererConfig {

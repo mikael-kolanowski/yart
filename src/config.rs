@@ -2,10 +2,10 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+use serde::de::{self, Deserializer};
 use serde::Deserialize;
 use serde::Serialize;
 use serde::Serializer;
-use serde::de::{self, Deserializer};
 
 use crate::math::{Point3, Vec3};
 
@@ -23,16 +23,11 @@ where
     serializer.serialize_str(&format!("{}, {}, {}", p.0.x, p.0.y, p.0.z))
 }
 
-fn serialize_aspect_ratio<S>(ar: &f64, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_aspect_ratio<S>(ar: &(u32, u32), serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let (w, h) = if *ar > 0.0 {
-        (16.0 * ar, 16.0)
-    } else {
-        (16.0, 16.0 / *ar)
-    };
-    serializer.serialize_str(&format!("{}:{}", w as u32, h as u32))
+    serializer.serialize_str(&format!("{}:{}", ar.0, ar.1))
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -51,7 +46,7 @@ pub struct CameraConfig {
         serialize_with = "serialize_aspect_ratio",
         deserialize_with = "deserialize_aspect_ratio"
     )]
-    pub aspect_ratio: f64,
+    pub aspect_ratio: (u32, u32),
     pub field_of_view: u32,
     #[serde(
         serialize_with = "serialize_point3",
@@ -235,7 +230,7 @@ impl ObjectConfig {
     }
 }
 
-fn deserialize_aspect_ratio<'de, D>(deserializer: D) -> Result<f64, D::Error>
+fn deserialize_aspect_ratio<'de, D>(deserializer: D) -> Result<(u32, u32), D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -245,19 +240,19 @@ where
         .split_once(':')
         .ok_or_else(|| de::Error::custom("aspect ratio must be of form W:H"))?;
 
-    let width: f64 = width
+    let width: u32 = width
         .parse()
         .map_err(|_| de::Error::custom("invalid width in aspect ratio"))?;
 
-    let height: f64 = height
+    let height: u32 = height
         .parse()
         .map_err(|_| de::Error::custom("invalid height in aspect ratio"))?;
 
-    if height == 0.0 {
+    if height == 0 {
         return Err(de::Error::custom("aspect ratio height must not be zero"));
     }
 
-    Ok(width / height)
+    Ok((width, height))
 }
 
 fn deserialize_vec3<'de, D>(deserializer: D) -> Result<Vec3, D::Error>
